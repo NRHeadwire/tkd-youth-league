@@ -70,6 +70,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px; }
 .stat-card { background: var(--card); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .stat-card .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
 .stat-card .label { font-size: 0.8rem; color: var(--text-light); margin-top: 4px; }
+.stat-card[onclick]:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(26,35,126,0.15); transform: translateY(-1px); transition: all 0.2s; }
 
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
@@ -506,10 +507,10 @@ function renderDashboard() {
 
   return `
     <div class="stats-grid">
-      <div class="stat-card"><div class="num">${total}</div><div class="label">${t('dashboard.totalParticipants')}</div></div>
-      <div class="stat-card"><div class="num">${active.length}</div><div class="label">${t('dashboard.activeParticipants')}</div></div>
-      <div class="stat-card"><div class="num">${groups}</div><div class="label">${t('dashboard.totalGroups')}</div></div>
-      <div class="stat-card"><div class="num">${completionPct}%</div><div class="label">${t('dashboard.completion')}</div></div>
+      <div class="stat-card" onclick="switchTab('participants')" style="cursor:pointer"><div class="num">${total}</div><div class="label">${t('dashboard.totalParticipants')}</div></div>
+      <div class="stat-card" onclick="switchTab('participants')" style="cursor:pointer"><div class="num">${active.length}</div><div class="label">${t('dashboard.activeParticipants')}</div></div>
+      <div class="stat-card" onclick="switchTab('groups')" style="cursor:pointer"><div class="num">${groups}</div><div class="label">${t('dashboard.totalGroups')}</div></div>
+      <div class="stat-card" onclick="switchTab('scoring')" style="cursor:pointer"><div class="num">${completionPct}%</div><div class="label">${t('dashboard.completion')}</div></div>
     </div>
     ${warning}
     ${total === 0 ? `<div class="card"><p>${t('dashboard.setupHint')}</p></div>` : ''}
@@ -543,7 +544,7 @@ function renderDashboardDisciplineStatus() {
 
   let rows = disciplines.map(d => {
     const done = active.filter(p => d.check(p.id)).length;
-    return `<tr><td>${t('scoring.' + d.key)}</td><td>${done} / ${active.length}</td><td>
+    return `<tr onclick="currentDiscipline='${d.key}';switchTab('scoring')" style="cursor:pointer"><td>${t('scoring.' + d.key)}</td><td>${done} / ${active.length}</td><td>
       <span class="completion-dot ${done === active.length ? 'complete' : 'incomplete'}"></span>
     </td></tr>`;
   }).join('');
