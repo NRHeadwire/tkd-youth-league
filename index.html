@@ -21,20 +21,44 @@
   --radius: 8px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-header { background: var(--primary); color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-header h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 8px; }
-header h1::before { content: '\1F94B'; }
-.header-actions { display: flex; align-items: center; gap: 12px; }
-.lang-toggle { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-.lang-toggle:hover { background: rgba(255,255,255,0.25); }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
 
-nav { background: var(--card); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; padding: 0 16px; }
-nav button { background: none; border: none; padding: 12px 20px; cursor: pointer; font-size: 0.9rem; color: var(--text-light); border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; }
-nav button:hover { color: var(--text); background: #f0f0f0; }
-nav button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.sidebar { width: 220px; min-height: 100vh; background: var(--primary); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; }
+.sidebar-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.sidebar-header h1 { font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.sidebar-header h1::before { content: '\1F94B'; }
+.sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.sidebar-nav button { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; padding: 11px 20px; cursor: pointer; font-size: 0.9rem; color: rgba(255,255,255,0.7); text-align: left; transition: all 0.2s; border-left: 3px solid transparent; }
+.sidebar-nav button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.sidebar-nav button.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; border-left-color: #fff; }
+.sidebar-nav .nav-icon { width: 18px; text-align: center; font-size: 0.95rem; }
+.sidebar-divider { height: 1px; background: rgba(255,255,255,0.15); margin: 8px 16px; }
+.sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; color: rgba(255,255,255,0.4); padding: 8px 20px 4px; letter-spacing: 0.5px; }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.15); display: flex; gap: 8px; }
+.sidebar-footer button { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+.sidebar-footer button:hover { background: rgba(255,255,255,0.2); }
+
+.main-wrapper { margin-left: 220px; flex: 1; min-height: 100vh; }
+header { background: var(--card); color: var(--text); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--border); }
+header h1 { font-size: 1.1rem; color: var(--primary); }
+header h1::before { display: none; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.lang-toggle { background: var(--primary); border: none; color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+.lang-toggle:hover { background: var(--primary-light); }
 
 main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; }
+  .sidebar-header h1 span { display: none; }
+  .sidebar-nav button span { display: none; }
+  .sidebar-nav button { justify-content: center; padding: 11px 0; border-left: none; border-right: 3px solid transparent; }
+  .sidebar-nav button.active { border-right-color: #fff; border-left-color: transparent; }
+  .sidebar-section-label { display: none; }
+  .sidebar-footer { flex-direction: column; padding: 8px; }
+  .sidebar-footer button span { display: none; }
+  .main-wrapper { margin-left: 60px; }
+}
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
@@ -114,8 +138,9 @@ input[type="file"] { padding: 6px; }
 
 .print-only { display: none; }
 @media print {
-  header, nav, .no-print, .btn { display: none !important; }
+  .sidebar, header, nav, .no-print, .btn { display: none !important; }
   .print-only { display: block !important; }
+  .main-wrapper { margin-left: 0 !important; }
   .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
   body { background: #fff; }
   main { max-width: 100%; padding: 0; }
@@ -130,17 +155,21 @@ input[type="file"] { padding: 6px; }
 </head>
 <body>
 
-<header>
-  <h1 id="headerTitle">TKD Youth League</h1>
-  <div class="header-actions">
-    <button class="lang-toggle" onclick="showEventMenu()" id="eventBtn" title="Event">&#9776;</button>
-    <button class="lang-toggle" onclick="toggleLang()" id="langBtn">DE</button>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <h1><span id="sidebarTitle">TKD Youth League</span></h1>
   </div>
-</header>
+  <div class="sidebar-nav" id="sidebarNav"></div>
+  <div class="sidebar-footer" id="sidebarFooter"></div>
+</aside>
 
-<nav id="mainNav"></nav>
-
-<main id="mainContent"></main>
+<div class="main-wrapper">
+  <header>
+    <h1 id="headerTitle"></h1>
+    <div class="header-actions" id="headerActions"></div>
+  </header>
+  <main id="mainContent"></main>
+</div>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalContent"></div>
@@ -393,19 +422,39 @@ function toggleLang() {
   render();
 }
 
+const TAB_ICONS = {
+  dashboard: '&#9634;', participants: '&#9823;', groups: '&#9638;',
+  scoring: '&#9733;', rankings: '&#9650;', certificates: '&#9891;', settings: '&#9881;'
+};
+
 function render() {
-  document.getElementById('headerTitle').textContent = t('title');
-  document.getElementById('langBtn').textContent = lang === 'en' ? 'DE' : 'EN';
+  document.getElementById('sidebarTitle').textContent = t('title');
+  document.getElementById('headerTitle').textContent = t('tabs.' + currentTab);
   renderNav();
   renderContent();
 }
 
 function renderNav() {
-  const nav = document.getElementById('mainNav');
+  const nav = document.getElementById('sidebarNav');
   const tabs = ['dashboard', 'participants', 'groups', 'scoring', 'rankings', 'certificates', 'settings'];
   nav.innerHTML = tabs.map(tab =>
-    `<button class="${currentTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')">${t('tabs.' + tab)}</button>`
+    `<button class="${currentTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')"><span class="nav-icon">${TAB_ICONS[tab]}</span><span>${t('tabs.' + tab)}</span></button>`
   ).join('');
+
+  // Event section
+  nav.innerHTML += `
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">${t('event.menu')}</div>
+    <button onclick="saveEvent()"><span class="nav-icon">&#128190;</span><span>${t('event.saveEvent')}</span></button>
+    <button onclick="document.getElementById('loadEventFileSidebar').click()"><span class="nav-icon">&#128194;</span><span>${t('event.loadEvent')}</span></button>
+    <button onclick="newEvent()"><span class="nav-icon">&#10010;</span><span>${t('event.newEvent')}</span></button>
+    <input type="file" id="loadEventFileSidebar" accept=".json,.tkd" style="display:none" onchange="loadEventFromInput(this)" />
+  `;
+
+  // Footer with lang toggle
+  document.getElementById('sidebarFooter').innerHTML = `
+    <button onclick="toggleLang()"><span class="nav-icon">&#127760;</span> <span>${lang === 'en' ? 'Deutsch' : 'English'}</span></button>
+  `;
 }
 
 function switchTab(tab) {
@@ -1893,6 +1942,10 @@ function newEvent() {
     currentTab = 'dashboard';
     render();
   }
+}
+
+function loadEventFromInput(input) {
+  loadEvent(input);
 }
 
 // Close modal on overlay click
