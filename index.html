@@ -645,24 +645,29 @@ function sortGroups() {
     return (a.weight || 0) - (b.weight || 0);
   });
 
-  // Calculate group count: prefer groups of 4, allow 3
+  // Calculate group sizes: prefer 4, allow 3
   let numGroups = Math.ceil(active.length / 4);
   if (numGroups < 1) numGroups = 1;
   // Make sure no group has fewer than 3
   while (numGroups > 1 && Math.floor(active.length / numGroups) < 3) numGroups--;
 
-  // Snake distribution for balanced groups
-  const groups = Array.from({ length: numGroups }, (_, i) => ({
-    id: 'g' + (i + 1),
-    name: (t('groups.groupName') || 'Group') + ' ' + (i + 1),
-    participantIds: []
-  }));
+  // Calculate how many participants per group
+  const baseSize = Math.floor(active.length / numGroups);
+  const remainder = active.length % numGroups;
 
-  active.forEach((p, i) => {
-    const row = Math.floor(i / numGroups);
-    const col = row % 2 === 0 ? (i % numGroups) : (numGroups - 1 - (i % numGroups));
-    groups[col].participantIds.push(p.id);
-  });
+  // Sequential fill: keep similar participants together
+  // Groups are filled in order so age/belt/weight clusters stay intact
+  const groups = [];
+  let idx = 0;
+  for (let i = 0; i < numGroups; i++) {
+    const size = baseSize + (i < remainder ? 1 : 0);
+    groups.push({
+      id: 'g' + (i + 1),
+      name: (t('groups.groupName') || 'Group') + ' ' + (i + 1),
+      participantIds: active.slice(idx, idx + size).map(p => p.id)
+    });
+    idx += size;
+  }
 
   state.groups = groups;
   // Clear group assignment for inactive
