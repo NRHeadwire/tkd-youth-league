@@ -1091,8 +1091,7 @@ function saveReaction(pId, field, val) {
     r.total = r.r1 + r.r2 + r.r3;
   } else { r.total = null; }
   saveState();
-  // Re-render rank column
-  render();
+  updateScoringDisplay();
 }
 
 function rankReaction(groupId) {
@@ -1141,7 +1140,7 @@ function saveStrength(pId, field, val) {
     r.total = r.r1 + r.r2 + r.r3;
   } else { r.total = null; }
   saveState();
-  render();
+  updateScoringDisplay();
 }
 
 function rankStrength(groupId) {
@@ -1182,7 +1181,7 @@ function saveSpeedKicking(pId, val) {
   if (!state.results.speedKicking[pId]) state.results.speedKicking[pId] = {};
   state.results.speedKicking[pId].count = val === '' ? null : parseInt(val);
   saveState();
-  render();
+  updateScoringDisplay();
 }
 
 function rankSpeedKicking(groupId) {
@@ -1247,7 +1246,7 @@ function saveForm(pId, field, val) {
     r.points = fs ? (fs[r.rating] || 0) : 0;
   } else { r.points = null; }
   saveState();
-  render();
+  updateScoringDisplay();
 }
 
 function rankForm(groupId) {
@@ -1500,6 +1499,74 @@ function assignRanks(sorted) {
     }
   });
   return sorted;
+}
+
+// ============================================================
+// Update scoring display without full re-render (preserves focus/tab)
+// ============================================================
+function updateScoringDisplay() {
+  const ps = getGroupParticipants(currentGroupId);
+  if (!ps.length) return;
+
+  // Get the scoring table(s) in current view
+  const tables = document.querySelectorAll('#mainContent table');
+  if (!tables.length) return;
+  const table = tables[0];
+  const rows = table.querySelectorAll('tr');
+
+  let rankings;
+  switch (currentDiscipline) {
+    case 'reaction':
+      rankings = rankReaction(currentGroupId);
+      ps.forEach((p, i) => {
+        const r = state.results.reaction[p.id] || {};
+        const row = rows[i + 1]; // skip header
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        cells[4].innerHTML = `<span class="score-total">${r.total != null ? r.total.toFixed(2) : '-'} ${t('scoring.seconds')}</span>`;
+        const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+        cells[5].innerHTML = `<span class="rank-badge rank-${rank}">${rank}</span>`;
+      });
+      break;
+    case 'strength':
+      rankings = rankStrength(currentGroupId);
+      ps.forEach((p, i) => {
+        const r = state.results.strength[p.id] || {};
+        const row = rows[i + 1];
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        cells[4].innerHTML = `<span class="score-total">${r.total != null ? r.total : '-'} ${t('scoring.boards')}</span>`;
+        const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+        cells[5].innerHTML = `<span class="rank-badge rank-${rank}">${rank}</span>`;
+      });
+      break;
+    case 'speedKicking':
+      rankings = rankSpeedKicking(currentGroupId);
+      ps.forEach((p, i) => {
+        const row = rows[i + 1];
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+        cells[2].innerHTML = `<span class="rank-badge rank-${rank}">${rank}</span>`;
+      });
+      break;
+    case 'form':
+      rankings = rankForm(currentGroupId);
+      ps.forEach((p, i) => {
+        const r = state.results.form[p.id] || {};
+        const row = rows[i + 1];
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        cells[3].innerHTML = `<span class="score-total">${r.points != null ? r.points : '-'} ${t('scoring.points')}</span>`;
+        const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+        cells[4].innerHTML = `<span class="rank-badge rank-${rank}">${rank}</span>`;
+      });
+      break;
+    default:
+      // For kyorugi or unknown, do a full render
+      render();
+      return;
+  }
 }
 
 // ============================================================
