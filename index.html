@@ -1269,89 +1269,76 @@ function renderKyorugiScoring() {
     <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('kyorugi')">${t('scoring.print')}</button>
   </div>`;
 
-  if (allYoung) {
-    // Age 6-7: simple point count
-    html += `<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:12px">${t('scoring.simplePoints')}</p>`;
-    let rows = ps.map((p, i) => {
-      const r = state.results.kyorugi[p.id] || {};
-      return `<tr>
-        <td>${escHtml(p.name)}</td>
-        <td><input class="score-input" type="number" min="0" tabindex="${1 + i}" value="${r.totalPoints ?? ''}" onchange="saveKyorugiSimple('${p.id}',this.value)" style="width:120px" /></td>
-      </tr>`;
-    }).join('');
-    html += `<table><tr><th>${t('scoring.participant')}</th><th>${t('scoring.points')}</th></tr>${rows}</table>`;
-  } else {
-    // Age 8+ (or mixed): round-robin with round-by-round entry
-    const rounds = generateRounds(ps);
-    html += rounds.map((round, rIdx) => {
-      let roundHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid var(--primary)">
-        <h3 style="margin-bottom:12px">${t('scoring.round')} ${rIdx + 1}</h3>`;
+  // All ages: round-robin with rounds
+  const rounds = generateRounds(ps);
+  html += rounds.map((round, rIdx) => {
+    let roundHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid var(--primary)">
+      <h3 style="margin-bottom:12px">${t('scoring.round')} ${rIdx + 1}</h3>`;
 
-      roundHtml += round.matches.map((match, mIdx) => {
-        const a = match.a;
-        const b = match.b;
-        const resA = getMatchResult(a.id, b.id);
-        const resB = getMatchResult(b.id, a.id);
-        const tabBase = 1 + (rIdx * 10) + (mIdx * 5);
+    roundHtml += round.matches.map((match, mIdx) => {
+      const a = match.a;
+      const b = match.b;
+      const resA = getMatchResult(a.id, b.id);
+      const resB = getMatchResult(b.id, a.id);
+      const tabBase = 1 + (rIdx * 10) + (mIdx * 4);
+      const isYoung = calcAge(a.dob) <= 7 && calcAge(b.dob) <= 7;
 
-        return `<table style="margin-bottom:12px;background:#f8f9fa;border-radius:var(--radius)">
-          <tr style="background:transparent">
-            <th style="width:30%;background:transparent"></th>
-            <th style="text-align:center;background:transparent;font-size:1rem;color:var(--primary)">${escHtml(a.name)}</th>
-            <th style="text-align:center;background:transparent;font-size:1rem;color:var(--primary)">${escHtml(b.name)}</th>
-          </tr>
-          <tr>
-            <td style="font-weight:600">${t('scoring.won')} / ${t('scoring.lost')}</td>
-            <td style="text-align:center" colspan="2">
-              <select tabindex="${tabBase}" onchange="saveKyorugiWinner('${a.id}','${b.id}',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid var(--border);font-weight:600;min-width:150px">
-                <option value="">--</option>
-                <option value="${a.id}" ${resA?.won === true ? 'selected' : ''}>${escHtml(a.name)}</option>
-                <option value="${b.id}" ${resB?.won === true ? 'selected' : ''}>${escHtml(b.name)}</option>
-              </select>
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight:600">${t('scoring.pointsFor')}</td>
-            <td style="text-align:center">
-              <input class="score-input" type="number" min="0" tabindex="${tabBase + 1}" value="${resA?.pointsFor ?? ''}" onchange="saveKyorugiRound('${a.id}','${b.id}','pointsFor',this.value)" />
-            </td>
-            <td style="text-align:center">
-              <input class="score-input" type="number" min="0" tabindex="${tabBase + 2}" value="${resB?.pointsFor ?? ''}" onchange="saveKyorugiRound('${b.id}','${a.id}','pointsFor',this.value)" />
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight:600">${t('scoring.pointsAgainst')}</td>
-            <td style="text-align:center">
-              <input class="score-input" type="number" min="0" tabindex="${tabBase + 3}" value="${resA?.pointsAgainst ?? ''}" onchange="saveKyorugiRound('${a.id}','${b.id}','pointsAgainst',this.value)" />
-            </td>
-            <td style="text-align:center">
-              <input class="score-input" type="number" min="0" tabindex="${tabBase + 4}" value="${resB?.pointsAgainst ?? ''}" onchange="saveKyorugiRound('${b.id}','${a.id}','pointsAgainst',this.value)" />
-            </td>
-          </tr>
-        </table>`;
-      }).join('');
+      let matchHtml = `<table style="margin-bottom:12px;background:#f8f9fa;border-radius:var(--radius)">
+        <tr style="background:transparent">
+          <th style="width:30%;background:transparent"></th>
+          <th style="text-align:center;background:transparent;font-size:1rem;color:var(--primary)">${escHtml(a.name)}</th>
+          <th style="text-align:center;background:transparent;font-size:1rem;color:var(--primary)">${escHtml(b.name)}</th>
+        </tr>`;
 
-      if (round.sitOut) {
-        roundHtml += `<p style="font-size:0.85rem;color:var(--text-light);font-style:italic">${escHtml(round.sitOut.name)} ${t('scoring.sitsOut')}</p>`;
+      // Age 8+: show winner dropdown
+      if (!isYoung) {
+        matchHtml += `<tr>
+          <td style="font-weight:600">${t('scoring.winner')}</td>
+          <td style="text-align:center" colspan="2">
+            <select tabindex="${tabBase}" onchange="saveKyorugiWinner('${a.id}','${b.id}',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid var(--border);font-weight:600;min-width:150px">
+              <option value="">--</option>
+              <option value="${a.id}" ${resA?.won === true ? 'selected' : ''}>${escHtml(a.name)}</option>
+              <option value="${b.id}" ${resB?.won === true ? 'selected' : ''}>${escHtml(b.name)}</option>
+            </select>
+          </td>
+        </tr>`;
       }
 
-      roundHtml += `</div>`;
-      return roundHtml;
+      // Points for each fighter
+      matchHtml += `<tr>
+        <td style="font-weight:600">${t('scoring.points')}</td>
+        <td style="text-align:center">
+          <input class="score-input" type="number" min="0" tabindex="${tabBase + (isYoung ? 0 : 1)}" value="${resA?.pointsFor ?? ''}" onchange="saveKyorugiRound('${a.id}','${b.id}','pointsFor',this.value)" />
+        </td>
+        <td style="text-align:center">
+          <input class="score-input" type="number" min="0" tabindex="${tabBase + (isYoung ? 1 : 2)}" value="${resB?.pointsFor ?? ''}" onchange="saveKyorugiRound('${b.id}','${a.id}','pointsFor',this.value)" />
+        </td>
+      </tr>
+      </table>`;
+
+      return matchHtml;
     }).join('');
-  }
+
+    if (round.sitOut) {
+      roundHtml += `<p style="font-size:0.85rem;color:var(--text-light);font-style:italic">${escHtml(round.sitOut.name)} ${t('scoring.sitsOut')}</p>`;
+    }
+
+    roundHtml += `</div>`;
+    return roundHtml;
+  }).join('');
 
   // Show standings table
   const rankings = rankKyorugi(currentGroupId);
   if (rankings.length > 0) {
+    const showWins = !allYoung;
     html += `<h3 style="margin:16px 0 8px">${t('scoring.rank')}</h3><table>
-      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.wins')}</th><th>${t('scoring.pointsFor')}</th><th>${t('scoring.pointsAgainst')}</th><th>${t('scoring.diff')}</th><th>${t('scoring.rank')}</th></tr>
+      <tr><th>${t('scoring.participant')}</th>${showWins ? `<th>${t('scoring.wins')}</th>` : ''}<th>${t('scoring.points')}</th><th>${t('scoring.diff')}</th><th>${t('scoring.rank')}</th></tr>
       ${rankings.map(r => {
         const p = state.participants.find(x => x.id === r.id);
         return `<tr><td>${escHtml(p?.name)}</td>
-          <td>${r.wins ?? r.total ?? '-'}</td>
+          ${showWins ? `<td>${r.wins}</td>` : ''}
           <td>${r.ptsFor ?? '-'}</td>
-          <td>${r.ptsAgainst ?? '-'}</td>
-          <td>${r.diff ?? '-'}</td>
+          <td>${r.diff >= 0 ? '+' : ''}${r.diff ?? '-'}</td>
           <td><span class="rank-badge rank-${r.rank}">${r.rank}</span></td></tr>`;
       }).join('')}
     </table>`;
@@ -1457,28 +1444,32 @@ function saveKyorugiRound(pId, oppId, field, val) {
 
 function rankKyorugi(groupId) {
   const ps = getGroupParticipants(groupId);
+  const allYoung = ps.every(p => calcAge(p.dob) <= 7);
   const scored = [];
+
   for (const p of ps) {
     const r = state.results.kyorugi[p.id];
-    const age = calcAge(p.dob);
-    if (age <= 7) {
-      if (r?.totalPoints != null) {
-        scored.push({ id: p.id, wins: r.totalPoints, ptsFor: r.totalPoints, ptsAgainst: 0, diff: r.totalPoints, total: r.totalPoints, isSimple: true });
-      }
+    if (!r?.matches || r.matches.length === 0) continue;
+
+    const ptsFor = r.matches.reduce((s, m) => s + (m.pointsFor || 0), 0);
+    // Opponent points = sum of opponent's pointsFor in matches against this participant
+    let ptsAgainst = 0;
+    for (const m of r.matches) {
+      const oppResult = getMatchResult(m.opponentId, p.id);
+      ptsAgainst += oppResult?.pointsFor || 0;
+    }
+
+    if (allYoung) {
+      // Young: rank by total points (no win/loss)
+      scored.push({ id: p.id, wins: '-', ptsFor, ptsAgainst, diff: ptsFor - ptsAgainst, total: ptsFor });
     } else {
-      if (r?.matches && r.matches.length > 0) {
-        const wins = r.matches.filter(m => m.won === true).length;
-        const ptsFor = r.matches.reduce((s, m) => s + (m.pointsFor || 0), 0);
-        const ptsAgainst = r.matches.reduce((s, m) => s + (m.pointsAgainst || 0), 0);
-        scored.push({ id: p.id, wins, ptsFor, ptsAgainst, diff: ptsFor - ptsAgainst, total: wins * 1000 + (ptsFor - ptsAgainst + 500), isSimple: false });
-      }
+      const wins = r.matches.filter(m => m.won === true).length;
+      scored.push({ id: p.id, wins, ptsFor, ptsAgainst, diff: ptsFor - ptsAgainst, total: wins * 1000 + (ptsFor - ptsAgainst + 500) });
     }
   }
 
-  // Sort: simple by points desc, match-based by wins desc then diff desc
   scored.sort((a, b) => {
-    if (a.isSimple !== b.isSimple) return a.isSimple ? 1 : -1;
-    if (a.isSimple) return b.total - a.total;
+    if (allYoung) return b.ptsFor - a.ptsFor;
     if (a.wins !== b.wins) return b.wins - a.wins;
     return b.diff - a.diff;
   });
