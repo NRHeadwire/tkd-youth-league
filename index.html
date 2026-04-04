@@ -133,6 +133,7 @@ input[type="file"] { padding: 6px; }
 <header>
   <h1 id="headerTitle">TKD Youth League</h1>
   <div class="header-actions">
+    <button class="lang-toggle" onclick="showEventMenu()" id="eventBtn" title="Event">&#9776;</button>
     <button class="lang-toggle" onclick="toggleLang()" id="langBtn">DE</button>
   </div>
 </header>
@@ -205,6 +206,13 @@ const I18N = {
       resetConfirm: 'This will delete ALL data. Are you sure?', freeForm: 'Free Form',
       poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Good', outstanding: 'Outstanding'
     },
+    event: {
+      menu: 'Event', newEvent: 'New Event', saveEvent: 'Save Event', loadEvent: 'Load Event',
+      newConfirm: 'Start a new event? All current data will be lost unless you save first.',
+      saveHint: 'Downloads the current event as a file you can load later.',
+      loadHint: 'Load a previously saved event file.',
+      saved: 'Event saved!', loaded: 'Event loaded!', cancel: 'Cancel'
+    },
     belts: { white: 'White', whiteYellow: 'White-Yellow', yellow: 'Yellow', yellowGreen: 'Yellow-Green', green: 'Green', greenBlue: 'Green-Blue', blue: 'Blue', blueRed: 'Blue-Red', red: 'Red', redBlack: 'Red-Black', black: 'Black' }
   },
   de: {
@@ -261,6 +269,13 @@ const I18N = {
       save: 'Einstellungen speichern', saved: 'Einstellungen gespeichert!', reset: 'Alle Daten zur\u00fccksetzen',
       resetConfirm: 'Dies l\u00f6scht ALLE Daten. Bist du sicher?', freeForm: 'Freie Form',
       poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Gut', outstanding: 'Hervorragend'
+    },
+    event: {
+      menu: 'Event', newEvent: 'Neuer Wettkampf', saveEvent: 'Event speichern', loadEvent: 'Event laden',
+      newConfirm: 'Neuen Wettkampf starten? Alle aktuellen Daten gehen verloren, wenn du nicht vorher speicherst.',
+      saveHint: 'L\u00e4dt den aktuellen Wettkampf als Datei herunter, die sp\u00e4ter geladen werden kann.',
+      loadHint: 'Einen zuvor gespeicherten Wettkampf laden.',
+      saved: 'Event gespeichert!', loaded: 'Event geladen!', cancel: 'Abbrechen'
     },
     belts: { white: 'Weiss', whiteYellow: 'Weiss-Gelb', yellow: 'Gelb', yellowGreen: 'Gelb-Gr\u00fcn', green: 'Gr\u00fcn', greenBlue: 'Gr\u00fcn-Blau', blue: 'Blau', blueRed: 'Blau-Rot', red: 'Rot', redBlack: 'Rot-Schwarz', black: 'Schwarz' }
   }
@@ -1651,6 +1666,115 @@ function resetAllData() {
     render();
   }
 }
+
+// ============================================================
+// Event Management
+// ============================================================
+function showEventMenu() {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <h2>${t('event.menu')}</h2>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card" style="margin:0;cursor:pointer;border:2px solid var(--border);transition:border-color 0.2s" onclick="this.style.borderColor='var(--primary)'" onmouseenter="this.style.borderColor='var(--primary-light)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveEvent()">
+          ${t('event.saveEvent')}
+        </button>
+        <p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">${t('event.saveHint')}</p>
+      </div>
+      <div class="card" style="margin:0;cursor:pointer;border:2px solid var(--border);transition:border-color 0.2s" onmouseenter="this.style.borderColor='var(--primary-light)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="document.getElementById('loadEventFile').click()">
+          ${t('event.loadEvent')}
+        </button>
+        <input type="file" id="loadEventFile" accept=".json,.tkd" style="display:none" onchange="loadEvent(this)" />
+        <p style="font-size:0.85rem;color:var(--text-light);margin-top:8px">${t('event.loadHint')}</p>
+      </div>
+      <div class="card" style="margin:0;cursor:pointer;border:2px solid var(--border);transition:border-color 0.2s" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <button class="btn btn-accent" style="width:100%;justify-content:center" onclick="newEvent()">
+          ${t('event.newEvent')}
+        </button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">${t('event.cancel')}</button>
+    </div>
+  `;
+  overlay.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function saveEvent() {
+  const eventData = {
+    _format: 'tkd-youth-league-event',
+    _version: 1,
+    _savedAt: new Date().toISOString(),
+    ...state
+  };
+  const json = JSON.stringify(eventData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const name = (state.competition.name || 'TKD-Event').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const date = state.competition.date || new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `${name}_${date}.tkd.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeModal();
+}
+
+function loadEvent(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Validate it looks like an event file
+      if (!data.participants && !data.competition) {
+        alert('Invalid event file');
+        return;
+      }
+      // Remove metadata fields
+      delete data._format;
+      delete data._version;
+      delete data._savedAt;
+      // Merge with defaults to fill any missing fields
+      const def = defaultState();
+      state = { ...def, ...data };
+      if (!state.results) state.results = def.results;
+      DISCIPLINES.forEach(d => { if (!state.results[d]) state.results[d] = {}; });
+      if (!state.settings) state.settings = def.settings;
+      if (!state.settings.formScoring) state.settings.formScoring = def.settings.formScoring;
+      if (!state.settings.placementPoints) state.settings.placementPoints = def.settings.placementPoints;
+      saveState();
+      closeModal();
+      render();
+      alert(t('event.loaded'));
+    } catch (err) {
+      alert('Error loading file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function newEvent() {
+  if (confirm(t('event.newConfirm'))) {
+    state = defaultState();
+    saveState();
+    closeModal();
+    currentTab = 'dashboard';
+    render();
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
 
 // ============================================================
 // Init
