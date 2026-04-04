@@ -513,7 +513,15 @@ function renderDashboard() {
       <div class="stat-card" onclick="switchTab('scoring')" style="cursor:pointer"><div class="num">${completionPct}%</div><div class="label">${t('dashboard.completion')}</div></div>
     </div>
     ${warning}
-    ${total === 0 ? `<div class="card"><p>${t('dashboard.setupHint')}</p></div>` : ''}
+    ${total === 0 ? `<div class="card">
+      <h2>${lang === 'de' ? 'Beispieldaten laden' : 'Load Sample Data'}</h2>
+      <p style="margin-bottom:12px;font-size:0.85rem;color:var(--text-light)">${lang === 'de' ? 'Lade Beispiel-Teilnehmer um die App zu testen:' : 'Load sample participants to test the app:'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="loadSampleData(10)">10 ${t('dashboard.totalParticipants')}</button>
+        <button class="btn btn-primary" onclick="loadSampleData(20)">20 ${t('dashboard.totalParticipants')}</button>
+        <button class="btn btn-primary" onclick="loadSampleData(35)">35 ${t('dashboard.totalParticipants')}</button>
+      </div>
+    </div>` : ''}
     ${groups > 0 ? renderDashboardDisciplineStatus() : ''}
   `;
 }
@@ -840,13 +848,20 @@ function resetGroupNames() {
 // ============================================================
 // Custom Theme CSV Import
 // ============================================================
+const DEFAULT_THEMES={"Animals":["Mighty Tigers","Sneaky Foxes","Wild Stampede","Fierce Wolves","Charging Rhinos","Soaring Eagles","Shadow Panthers","Brave Buffalo","Rapid Cheetahs","Cunning Coyotes","Iron Gorillas","Thundering Mustangs","Arctic Polar Bears","Venomous Cobras","Howling Jackals","Blazing Falcons","Savage Badgers","Golden Jaguars","Silent Owls","Raging Bulls"],"Plants":["Thorny Roses","Mighty Oaks","Cactus Crew","Bamboo Breakers","Venus Flytraps","Poison Ivy League","Savage Sunflowers","Nettle Stingers","Wildflower Fury","Prickly Thistles","Root Rippers","Fern Force","Dandelion Dynamos","Clover Crushers","Moss Mavericks","Blossom Brawlers","Vine Vipers","Leaf Storm Legion","Petal Power","Sprout Spartans"],"Star Wars":["Little Jedis","Millennium Falcon Chauffeurs","Mighty Ewoks","Wookiee Warriors","Lightsaber Legends","Rebel Alliance Rookies","Speeder Bike Gang","Padawan Patrol","Galactic Guardians","Force Phantoms","Droid Squad","Starfighter Aces","Mandalorian Mavericks","Yoda's Younglings","Blaster Brigade","Cantina Crew","Hyperspace Hoppers","Clone Trooper Cadets","Jedi Stunt Doubles","Sarlacc Survivors"],"Star Constellations":["Orion's Belt Breakers","Mighty Cassiopeias","Scorpius Strikers","Leo's Pride","Draco Dragons","Pegasus Flyers","Aquila Eagles","Centaurus Chargers","Phoenix Risers","Ursa Major Force","Andromeda Aces","Lyra Legends","Gemini Twins","Taurus Titans","Cygnus Swans","Aries Avengers","Hydra Hunters","Corona Blazers","Canis Major Pack","Sagittarius Snipers"],"Galaxy / Interstellar":["Nebula Riders","Cosmic Drifters","Supernova Squad","Dark Matter Mavericks","Quasar Crushers","Pulsar Patrol","Stellar Storm","Warp Speed Warriors","Gravity Breakers","Comet Chasers","Galactic Nomads","Starborn Battalion","Void Voyagers","Astro Blazers","Orbital Outlaws","Plasma Pirates","Solar Flare Squad","Milky Way Marauders","Eclipse Enforcers","Cosmic Cannonballs"],"Music":["Bass Drop Crew","Funky Beats","Rhythm Rebels","Tempo Titans","Heavy Metal Hurricanes","Drum Roll Thunder","Electric Guitar Gladiators","Sonic Boom Squad","Treble Makers","Crescendo Crushers","Beatbox Battalion","Vinyl Vipers","Amplified Aces","Subwoofer Stompers","Melody Mavericks","Riff Renegades","Symphony Smashers","Decibel Destroyers","Groove Guardians","Encore Enforcers"],"Snow":["Blizzard Brigade","Frosty Fighters","Ice Storm Squad","Avalanche Aces","Snowflake Samurai","Glacier Gladiators","Polar Vortex Crew","Sleet Strikers","Permafrost Patrol","Frozen Thunder","Hailstone Heroes","Tundra Titans","Snow Drift Demons","Icicle Invaders","Whiteout Warriors","Snowball Snipers","Flurry Force","Crystal Frost Crew","Cold Snap Commandos","Powder Plowers"],"Harry Potter":["Nimbus Riders","Phoenix Feathers","Galloping Hippogriffs","Quidditch Crushers","Patronus Patrol","Marauder's Mischief","Broomstick Blazers","Golden Snitch Snatchers","Butterbeer Brigade","Wand Wielders","Triwizard Titans","Expelliarmus Express","Keeper Crew","Beater Battalion","Mandrake Mashers","Fang's Fanatics","Whomping Willow Warriors","Thestral Thunderbolts","Howler Hurricanes","Basilisk Busters"],"Lord of the Rings":["Mighty Hobbits","Rohan Riders","Shire Sprinters","Gondor Guardians","Fangorn Fury","Mithril Mavericks","Rivendell Runners","Helm's Deep Defenders","Fellowship Force","Ent Enforcers","Lothlorien Legends","Hobbit Hole Heroes","Second Breakfast Brigade","Moria Miners","Ranger Renegades","Isengard Invaders","Shire Shield Wall","Elven Archers","Dwarven Axe Crew","Pelennor Chargers"],"Demon Slayer":["Flame Breathers","Thunder Strikers","Water Wheelers","Wind Cutters","Sun Breathing Squad","Hashira Heroes","Nichirin Blade Brigade","Butterfly Mansion Crew","Beast Breathing Pack","Stone Pillar Smashers","Mist Breathing Phantoms","Serpent Strike Squad","Corps Cadets","Insect Breathing Swarm","Love Breathing Legends","Sound Breathing Blasters","Rengoku's Flames","Zenitsu's Lightning Bolts","Tanjiro's Troop","Inosuke's Boar Rush"],"Disney":["Brave Simbas","Magic Carpeteers","Frozen Warriors","Infinity Buzz Squad","Hakuna Matata Crew","Brave Archers","Enchanted Beasts","Toy Box Titans","Glass Slipper Gladiators","Pixie Dust Patrol","Jungle Book Brawlers","Genie Wish Force","Stitch's Mischief Makers","Maui's Hook Heroes","Rapunzel's Tower Troops","Lightning McQueen Racers","Nemo Navigation Crew","Wreck-It Wreckers","Zootopia Zoomers","Moana's Wayfinders"],"Colors":["Crimson Blaze","Golden Thunder","Neon Ninjas","Silver Streak Squad","Sapphire Storm","Emerald Enforcers","Scarlet Surge","Cobalt Crushers","Violet Vipers","Amber Avalanche","Turquoise Titans","Magenta Mavericks","Onyx Outlaws","Bronze Battalion","Coral Commandos","Indigo Inferno","Pearl Phantoms","Copper Cyclones","Chartreuse Chargers","Platinum Predators"],"Fish / Ocean":["Speedy Marlins","Electric Eels","Mighty Orcas","Hammerhead Hammers","Great White Guardians","Barracuda Blitz","Stingray Strikers","Clownfish Commandos","Swordfish Slashers","Coral Reef Raiders","Tidal Wave Titans","Jellyfish Jolters","Seahorse Stampede","Whale Shark Warriors","Octopus Arms","Manta Ray Mavericks","Dolphin Dashers","Anglerfish Ambush","Piranha Pack","Kraken Kids"],"Martial Arts":["Flying Kicks","Iron Fists","Dragon Stance Squad","Roundhouse Rebels","Tiger Claw Crew","Spinning Hook Legends","Crane Kick Cadets","Black Belt Battalion","Cobra Strike Force","Mantis Fury","Thunder Punch Patrol","Dojo Destroyers","Side Kick Samurai","Breaking Board Brigade","Kiai Storm","Grapple Gang","Swift Sparring Squad","Poomsae Panthers","Tornado Kick Titans","Knuckle Knockouts"],"Korea":["Seoul Strikers","Hanbok Heroes","Kimchi Kickers","Bulgogi Blazers","K-Pop Crushers","Taeguk Titans","Busan Brawlers","Hallyu Hurricanes","Bibimbap Battalion","Jeju Jetsetters","Gangnam Gladiators","Dokkaebi Dynamos","Gyeongju Guardians","Ddakji Destroyers","Soju Sprinters","Arirang Aces","Hanji Hammers","Joseon Juggernauts","Tteokbokki Thunderbolts","Tiger of Korea Crew"],"Mountains":["Summit Seekers","Peak Predators","Alpine Aces","Cliff Crushers","Avalanche Avengers","Ridge Runners","Boulder Bashers","Elevation Elite","Canyon Commandos","Granite Gladiators","Basecamp Battalion","Sherpa Squad","Treeline Titans","Rockfall Rebels","High Altitude Heroes","Switchback Strikers","Cairn Crew","Crevasse Crossers","Glacier Grinders","Ravine Renegades"],"Swiss Folklore":["Wild Heidi Gang","Alphorn Blasters","Tell's Arrows","R\u00fctli Rebels","Edelweiss Elite","Yodel Yellers","Helvetia's Heroes","Ch\u00e4schteilet Champs","Bernese Bear Brawlers","Sennentuntschi Squad","Fasnacht Fury","Schwingen Slammers","Hornussen Hammers","Geissenpeter Gang","Fondue Force","Ranz des Vaches Riders","Alpengl\u00fchen Aces","Crossbow Commandos","Chalet Chargers","Steinstossen Stompers"],"Swiss Mountains":["Matterhorn Mavericks","Eiger Eagles","Jungfrau Giants","Pilatus Patrol","Titlis Titans","Rigi Renegades","S\u00e4ntis Strikers","Breithorn Blazers","Wetterhorn Warriors","Monch Marauders","Aletsch Avengers","Niesen Knights","Schilthorn Smashers","Bernina Brawlers","Stockhorn Stompers","Grindelwald Guardians","Lauterbrunnen Legends","Bl\u00fcemlisalp Battalion","Finsteraarhorn Force","Oberland Outlaws"],"Pirates":["Jolly Rogers","Kraken Chasers","Treasure Hunters","Skull Crossbone Crew","Cutlass Commandos","Plank Walkers","Cannon Ballers","Black Flag Brigade","Sea Dog Spartans","Buccaneer Blazers","Anchor Smashers","Scallywag Squad","Rum Barrel Rollers","Crow's Nest Crew","Broadside Brawlers","Shipwreck Survivors","Doubloon Dynamos","Parrot Shoulder Patrol","Marooned Mavericks","Tide Turner Titans"],"Mario Game":["Super Star Squad","Koopa Troopers","Mushroom Kingdom","Fire Flower Force","Bullet Bill Blasters","Warp Pipe Warriors","Chain Chomp Chasers","Bob-omb Battalion","Piranha Plant Patrol","Boo Crew Bashers","Rainbow Road Racers","Yoshi's Island Riders","Thwomp Smashers","Lakitu's Cloud Crew","Toad Brigade","Goomba Stompers","Star Power Sprinters","Blue Shell Bandits","Power-Up Posse","Lava Pit Leapers"],"Trees":["Mighty Sequoias","Whispering Willows","Iron Birches","Cedar Crushers","Banyan Brawlers","Redwood Rebels","Maple Mavericks","Pine Needle Patrol","Baobab Battalion","Aspen Avalanche","Cypress Storm","Elm Enforcers","Acacia Aces","Oak Bark Brigade","Juniper Juggernauts","Teak Titans","Rowan Renegades","Spruce Spartans","Eucalyptus Express","Yew Tree Yellers"],"Spring":["Blossom Burst","April Showers","Fresh Sprouts","Pollen Storm Patrol","Tulip Tornado","Raindrop Rebels","Cherry Blossom Blitz","Seedling Spartans","Dewdrop Destroyers","Robin's Return Crew","Meadow Mavericks","Thaw Breakers","Wildflower Warriors","Butterfly Brigade","Sunshine Sprinters","Green Shoots Gang","Garden Gladiators","Equinox Enforcers","Crocus Crushers","Puddle Jumpers"],"Fall / Autumn":["Golden Leaves","Harvest Heroes","October Storm","Acorn Avalanche","Maple Leaf Legends","Scarecrow Squad","Pumpkin Patch Patrol","Bonfire Brigade","Chestnut Chargers","Windfall Warriors","Amber Leaf Aces","Fog Front Force","Corn Maze Crushers","Crisp Air Commandos","Mulch Monsters","Rustling Rebels","Cider Cyclones","Gourd Gladiators","Equinox Eagles","Haystack Hustlers"],"Winter":["Frost Fighters","Polar Express","Icicle Warriors","Snowplow Squad","Frozen Fury","Sleet Storm Strikers","Hot Cocoa Commandos","Frostbite Force","Blizzard Brawlers","Mitten Mavericks","Glacial Gladiators","Penguin Patrol","Subzero Spartans","Sleigh Ride Raiders","Windchill Warriors","Snowshoe Sprinters","Ice Cap Crushers","North Wind Nomads","Cabin Fever Crew","Solstice Slammers"],"Summer":["Sunburn Squad","Wave Riders","Heatwave Heroes","Sandcastle Smashers","Beach Blitz Brigade","Solar Flare Force","Popsicle Patrol","Cannonball Crew","Hammock Hurricanes","Flip Flop Fighters","Tide Pool Titans","Firefly Fleet","Sunset Strikers","Scorcher Squad","Sprinkler Sprinters","Lemonade Legends","Bonfire Blazers","Barefoot Battalion","Solstice Spartans","Watermelon Warriors"],"Mythical Creatures":["Fierce Griffins","Phoenix Flames","Hydra Heads","Thundering Minotaurs","Kraken Krew","Chimera Chargers","Basilisk Battlers","Valkyrie Vanguard","Centaur Cavalry","Cerberus Squad","Pegasus Pilots","Leviathan Legends","Manticore Maulers","Cyclops Crushers","Sphinx Solvers","Gargoyle Guardians","Kitsune Kickers","Yeti Yellers","Banshee Blasters","Golem Gladiators"],"Ninjago":["Spinjitzu Masters","Golden Dragon Riders","Elemental Blades","Tornado of Creation Crew","Serpentine Slayers","Airjitzu Aces","Crystal King Crushers","Titanium Ninja Force","Green Ninja Legion","Ice Dragon Lancers","Fire Fang Fighters","Lightning Strike Squad","Earth Quake Crew","Shadow Ninja Patrol","Mech Pilot Mavericks","Skull Sorcerer Slammers","Overlord Outlaws","Destiny's Bounty Sailors","Ninja Dojo Defenders","Temple of Light Titans"],"Halloween":["Pumpkin Smashers","Ghost Busters","Spooky Sprinters","Witch Broom Racers","Howling Werewolves","Candy Corn Crushers","Trick or Treat Titans","Skeleton Crew","Haunted House Heroes","Bat Wing Battalion","Mummy Marauders","Cauldron Commandos","Zombie Zappers","Spider Web Swingers","Jack-o-Lantern Legends","Fog Machine Force","Goblin Gladiators","Scarecrow Strikers","Candy Raid Rebels","Full Moon Fury"],"Superheroes":["Cape Crusaders","Thunder Squad","Shield Bearers","Laser Eye Legends","Turbo Flight Force","Invisible Invincibles","Super Strength Society","Mask Mavericks","Power Punch Patrol","Speed Blur Brigade","Sidekick Spartans","Mega Mind Crew","Iron Will Warriors","Teleport Titans","Justice Jammers","Plasma Bolt Posse","Gravity Gauntlet Gang","X-Ray Xtreme","Forcefield Fighters","Villain Vanquishers"],"Space Explorers":["Rocket Riders","Mars Pioneers","Asteroid Dodgers","Lunar Landing Crew","Zero Gravity Gang","Space Station Spartans","Cosmonaut Crushers","Satellite Surfers","Crater Crawlers","Mission Control Mavericks","Launchpad Legends","Spacewalk Warriors","Orbit Outlaws","Meteor Shower Squad","Deep Space Divers","Booster Rocket Brigade","Interstellar Scouts","Galaxy Mappers","Fuel Cell Force","Touchdown Titans"],"Dinosaurs":["Raptor Pack","T-Rex Titans","Stego Squad","Triceratops Chargers","Veloci Raptors","Pterodactyl Pilots","Brontosaurus Brawlers","Ankylosaurus Armor","Dino Stampede","Fossil Fury","Jurassic Juggernauts","Mega Tooth Maulers","Dino Egg Defenders","Sauropod Smashers","Cretaceous Crushers","Spinosaurus Strikers","Diplodocus Dynamos","Extinction Evaders","Triassic Thunder","Pachycephalosaurus Patrol"],"Vikings":["Shield Wall Warriors","Longship Legends","Frost Berserkers","Mjolnir Maulers","Rune Rebels","Valheim Vanguard","Fjord Fighters","Ironclad Raiders","Odin's Offspring","Battle Axe Brigade","Norse Storm Force","Ragnarok Runners","Valhalla Valiants","Sea Wolf Pack","Dragonship Dashers","Thunderclap Thanes","Saga Spartans","Horn Helmet Heroes","Berserker Battalion","Midgard Mavericks"],"Jungle":["Vine Swingers","Canopy Crew","Jungle Rumble","Wild Machete Squad","Parrot Squawkers","Toucan Troopers","Gorilla Groove Gang","Anaconda Ambush","Treetop Titans","Monsoon Mavericks","Jaguar Jammers","Rainforest Raiders","Mudslide Marauders","Howler Monkey Havoc","Bamboo Blade Brigade","River Rapid Rebels","Quicksand Escapers","Chameleon Commandos","Tribal Drum Thunder","Orchid Outlaws"],"Robots / Tech":["Cyber Squad","Turbo Bots","Circuit Breakers","Pixel Patrol","Laser Grid Legends","Binary Blazers","Mech Warrior Crew","Drone Strike Force","Nanobot Ninjas","Titanium Titans","Wired Warriors","Gigabyte Gladiators","Iron Code Commandos","Voltage Vipers","Quantum Crushers","Robo Rampage","Firewall Fighters","Algorithm Aces","Motherboard Maulers","Silicon Spartans"],"Weather":["Thunder Bolts","Cyclone Crew","Lightning Legends","Tornado Titans","Hurricane Heroes","Monsoon Mavericks","Hailstone Hammers","Gale Force Gang","Foghorn Fighters","Dust Devil Dashers","Flash Flood Force","Rainbow Rebels","Barometric Brawlers","Wind Shear Warriors","Drizzle Destroyers","Squall Squad","Tempest Troopers","Downdraft Dynamos","Heat Dome Hammers","Sleet Surge Strikers"]};
+
 let customThemes = loadCustomThemes();
 
 function loadCustomThemes() {
   try {
     const s = localStorage.getItem('tkdCustomThemes');
-    return s ? JSON.parse(s) : {};
-  } catch (e) { return {}; }
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (Object.keys(parsed).length > 0) return parsed;
+    }
+  } catch (e) {}
+  // Return defaults on first use
+  return JSON.parse(JSON.stringify(DEFAULT_THEMES));
 }
 
 function saveCustomThemes() {
@@ -907,7 +922,7 @@ function importThemeCsv(input) {
 }
 
 function clearCustomThemes() {
-  customThemes = {};
+  customThemes = JSON.parse(JSON.stringify(DEFAULT_THEMES));
   saveCustomThemes();
   render();
 }
@@ -1436,7 +1451,65 @@ function saveKyorugiRound(pId, oppId, field, val) {
   }
 
   saveState();
-  render();
+  // Update winner indicators in-place without re-render to preserve tab focus
+  updateKyorugiWinners();
+}
+
+function updateKyorugiWinners() {
+  // Update winner checkmarks on match tables without full re-render
+  const tables = document.querySelectorAll('table[style*="background"]');
+  tables.forEach(table => {
+    const ths = table.querySelectorAll('tr:first-child th');
+    if (ths.length < 3) return;
+    // Find the two inputs in this match table
+    const inputs = table.querySelectorAll('input.score-input');
+    if (inputs.length < 2) return;
+    const aVal = inputs[0].value ? parseInt(inputs[0].value) : null;
+    const bVal = inputs[1].value ? parseInt(inputs[1].value) : null;
+    // Get original names (strip checkmark)
+    const aName = ths[1].textContent.replace(' \u2714', '').trim();
+    const bName = ths[2].textContent.replace(' \u2714', '').trim();
+    if (aVal != null && bVal != null) {
+      ths[1].textContent = aName + (aVal > bVal ? ' \u2714' : '');
+      ths[1].style.color = aVal > bVal ? 'var(--success)' : 'var(--primary)';
+      ths[1].style.fontWeight = aVal > bVal ? '700' : '600';
+      ths[2].textContent = bName + (bVal > aVal ? ' \u2714' : '');
+      ths[2].style.color = bVal > aVal ? 'var(--success)' : 'var(--primary)';
+      ths[2].style.fontWeight = bVal > aVal ? '700' : '600';
+    } else {
+      ths[1].textContent = aName;
+      ths[1].style.color = 'var(--primary)';
+      ths[1].style.fontWeight = '600';
+      ths[2].textContent = bName;
+      ths[2].style.color = 'var(--primary)';
+      ths[2].style.fontWeight = '600';
+    }
+  });
+  // Update standings table (last table in the card)
+  const allTables = document.querySelectorAll('#mainContent table');
+  const standingsTable = allTables[allTables.length - 1];
+  if (standingsTable && !standingsTable.style.background) {
+    const rankings = rankKyorugi(currentGroupId);
+    const rows = standingsTable.querySelectorAll('tr');
+    const ps = getGroupParticipants(currentGroupId);
+    ps.forEach((p, i) => {
+      const r = rankings.find(x => x.id === p.id);
+      const row = rows[i + 1];
+      if (!row || !r) return;
+      const cells = row.querySelectorAll('td');
+      const allYoung = ps.every(pp => calcAge(pp.dob) <= 7);
+      if (allYoung) {
+        cells[1].textContent = r.ptsFor ?? '-';
+        cells[2].textContent = (r.diff >= 0 ? '+' : '') + (r.diff ?? '-');
+        cells[3].innerHTML = `<span class="rank-badge rank-${r.rank}">${r.rank}</span>`;
+      } else {
+        cells[1].textContent = r.wins;
+        cells[2].textContent = r.ptsFor ?? '-';
+        cells[3].textContent = (r.diff >= 0 ? '+' : '') + (r.diff ?? '-');
+        cells[4].innerHTML = `<span class="rank-badge rank-${r.rank}">${r.rank}</span>`;
+      }
+    });
+  }
 }
 
 function rankKyorugi(groupId) {
@@ -1986,6 +2059,33 @@ function resetAllData() {
     render();
     showToast(lang === 'de' ? 'Alle Daten zur\u00fcckgesetzt' : 'All data reset', 'info');
   });
+}
+
+// ============================================================
+// Sample Data
+// ============================================================
+const SAMPLE_DATA = {
+  10: [
+    {name:"Samuel Roth",dob:"2017-06-06",weight:35.4,belt:"white"},{name:"Nadja Huber",dob:"2019-08-10",weight:27.4,belt:"yellow"},{name:"Kevin Luethi",dob:"2016-02-21",weight:36.5,belt:"green"},{name:"Yannick Widmer",dob:"2020-01-21",weight:23.2,belt:"whiteYellow"},{name:"Luca Schweizer",dob:"2017-07-28",weight:36.4,belt:"white"},{name:"Annika Hess",dob:"2014-05-06",weight:50.3,belt:"yellow"},{name:"Tobias Studer",dob:"2020-05-11",weight:24.7,belt:"whiteYellow"},{name:"Dominik Keller",dob:"2013-11-23",weight:39,belt:"white"},{name:"Liam Pfister",dob:"2019-05-04",weight:27.4,belt:"white"},{name:"Sophie Moser",dob:"2014-02-15",weight:41.2,belt:"whiteYellow"}
+  ],
+  20: [
+    {name:"Anna Kunz",dob:"2012-10-24",weight:38.5,belt:"greenBlue"},{name:"Dominik Leuenberger",dob:"2018-06-13",weight:22.4,belt:"yellow"},{name:"Selina Schneider",dob:"2015-08-12",weight:41.5,belt:"whiteYellow"},{name:"Ben Schneider",dob:"2010-07-19",weight:64.7,belt:"green"},{name:"Andrin Moser",dob:"2020-12-01",weight:20.2,belt:"white"},{name:"Sandro Hofer",dob:"2013-02-16",weight:36.1,belt:"red"},{name:"Nico Meier",dob:"2010-03-02",weight:62.1,belt:"greenBlue"},{name:"Adrian Baumgartner",dob:"2013-03-28",weight:50.6,belt:"blue"},{name:"Amelie Luethi",dob:"2010-03-23",weight:54.3,belt:"whiteYellow"},{name:"Moritz Zimmermann",dob:"2011-06-21",weight:42.5,belt:"red"},{name:"Fiona Schneider",dob:"2019-10-16",weight:24.5,belt:"yellow"},{name:"Samuel Ott",dob:"2013-12-08",weight:43.8,belt:"blue"},{name:"Lena Hess",dob:"2010-05-13",weight:61.9,belt:"black"},{name:"Rafael Egger",dob:"2017-08-18",weight:36.3,belt:"yellow"},{name:"Dario Fischer",dob:"2017-09-05",weight:26,belt:"white"},{name:"Noah Graf",dob:"2011-12-22",weight:53.4,belt:"red"},{name:"Celine Moser",dob:"2018-03-17",weight:22.8,belt:"yellowGreen"},{name:"Rafael Hess",dob:"2017-10-12",weight:31,belt:"green"},{name:"Nora Roth",dob:"2017-04-24",weight:33.7,belt:"green"},{name:"Hannah Zimmermann",dob:"2014-01-16",weight:39.4,belt:"blue"}
+  ],
+  35: [
+    {name:"Marco Graf",dob:"2020-02-04",weight:19.8,belt:"white"},{name:"Fabian Baumann",dob:"2020-04-17",weight:18.7,belt:"whiteYellow"},{name:"Patrick Schmid",dob:"2020-08-27",weight:22,belt:"whiteYellow"},{name:"Nils Berger",dob:"2013-03-28",weight:43.4,belt:"blue"},{name:"Lara Kunz",dob:"2018-12-07",weight:23.8,belt:"yellowGreen"},{name:"Nora Huber",dob:"2012-01-16",weight:50.2,belt:"red"},{name:"Tamara Keller",dob:"2014-07-04",weight:41.2,belt:"yellow"},{name:"Cedric Berger",dob:"2010-09-19",weight:44.4,belt:"black"},{name:"Dario Nussbaumer",dob:"2020-11-28",weight:20.1,belt:"white"},{name:"Lena Berger",dob:"2012-05-26",weight:40.7,belt:"blueRed"},{name:"Nadja Studer",dob:"2016-05-15",weight:39.1,belt:"yellow"},{name:"Seraina Stalder",dob:"2012-04-19",weight:42.2,belt:"whiteYellow"},{name:"Tobias Steiner",dob:"2018-10-17",weight:32.9,belt:"yellowGreen"},{name:"Sina Zimmermann",dob:"2013-11-07",weight:35.2,belt:"greenBlue"},{name:"Mia Roth",dob:"2016-12-06",weight:31.2,belt:"whiteYellow"},{name:"Sina Widmer",dob:"2017-03-14",weight:36.3,belt:"yellowGreen"},{name:"Liam Schneider",dob:"2015-05-03",weight:39.9,belt:"blue"},{name:"Rahel Zimmermann",dob:"2016-11-22",weight:31.8,belt:"white"},{name:"Ben Aebischer",dob:"2015-08-28",weight:33.8,belt:"white"},{name:"Annika Baumgartner",dob:"2010-01-11",weight:47.6,belt:"black"},{name:"Finn Leuenberger",dob:"2011-10-28",weight:50.9,belt:"redBlack"},{name:"Valentina Weber",dob:"2015-01-17",weight:31.8,belt:"green"},{name:"Lara Hess",dob:"2019-08-10",weight:27.6,belt:"whiteYellow"},{name:"Jasmin Berger",dob:"2012-04-23",weight:53.1,belt:"red"},{name:"Luca Meier",dob:"2016-01-14",weight:28.1,belt:"greenBlue"},{name:"Aline Keller",dob:"2012-11-07",weight:41,belt:"green"},{name:"Valentina Hess",dob:"2011-04-25",weight:45.8,belt:"greenBlue"},{name:"Laura Keller",dob:"2015-02-03",weight:42.6,belt:"green"},{name:"Sophie Mueller",dob:"2011-03-08",weight:55.6,belt:"yellow"},{name:"Alina Graf",dob:"2010-05-23",weight:62.3,belt:"yellow"},{name:"Emma Steiner",dob:"2010-08-09",weight:62.5,belt:"red"},{name:"Sophie Luethi",dob:"2010-11-07",weight:54.6,belt:"white"},{name:"Noemi Hofer",dob:"2016-08-05",weight:27.5,belt:"yellowGreen"},{name:"Lukas Koch",dob:"2020-06-01",weight:19.2,belt:"whiteYellow"},{name:"Emma Meyer",dob:"2011-02-13",weight:56.3,belt:"whiteYellow"}
+  ]
+};
+
+function loadSampleData(count) {
+  const data = SAMPLE_DATA[count];
+  if (!data) return;
+  state = defaultState();
+  data.forEach(d => {
+    state.participants.push({ id: generateId(), ...d, active: true });
+  });
+  saveState();
+  sortGroups();
+  showToast((lang === 'de' ? 'Geladen: ' : 'Loaded: ') + count + (lang === 'de' ? ' Teilnehmer' : ' participants'), 'success');
 }
 
 // ============================================================
