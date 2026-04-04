@@ -151,6 +151,19 @@ input[type="file"] { padding: 6px; }
 .modal { background: var(--card); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
 .modal h2 { margin-bottom: 16px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 300; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.toast { pointer-events: auto; padding: 14px 20px; border-radius: var(--radius); color: #fff; font-size: 0.9rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 10px; animation: toastIn 0.3s ease-out; min-width: 250px; max-width: 400px; }
+.toast-success { background: #2e7d32; }
+.toast-error { background: #c62828; }
+.toast-info { background: var(--primary); }
+.toast-warning { background: #e65100; }
+.toast-icon { font-size: 1.2rem; flex-shrink: 0; }
+.toast-msg { flex: 1; }
+.toast-close { background: none; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 1.1rem; padding: 0 0 0 8px; flex-shrink: 0; }
+.toast-close:hover { color: #fff; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
 </style>
 </head>
 <body>
@@ -174,6 +187,7 @@ input[type="file"] { padding: 6px; }
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalContent"></div>
 </div>
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
 // ============================================================
@@ -651,7 +665,7 @@ function importExcel(input) {
     }
     saveState();
     render();
-    alert((lang === 'de' ? 'Importiert: ' : 'Imported: ') + imported + (lang === 'de' ? ' Teilnehmer' : ' participants'));
+    showToast((lang === 'de' ? 'Importiert: ' : 'Imported: ') + imported + (lang === 'de' ? ' Teilnehmer' : ' participants'), 'success');
   };
   reader.readAsArrayBuffer(file);
 }
@@ -873,7 +887,7 @@ function importThemeCsv(input) {
 
     const count = Object.keys(themes).length;
     if (count === 0) {
-      alert(lang === 'de' ? 'Keine Themen gefunden. Format: Kategorie, Name' : 'No themes found. Format: Category, Name');
+      showToast(lang === 'de' ? 'Keine Themen gefunden. Format: Kategorie, Name' : 'No themes found. Format: Category, Name', 'warning');
       return;
     }
 
@@ -882,7 +896,7 @@ function importThemeCsv(input) {
     saveCustomThemes();
     input.value = '';
     render();
-    alert(count + ' ' + t('groups.csvImported'));
+    showToast(count + ' ' + t('groups.csvImported'), 'success');
   };
   if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
     reader.readAsArrayBuffer(file);
@@ -1870,16 +1884,49 @@ function saveSettings() {
   }
 
   saveState();
-  alert(t('settings.saved'));
+  showToast(t('settings.saved'), 'success');
   render();
 }
 
 function resetAllData() {
-  if (confirm(t('settings.resetConfirm'))) {
+  showConfirm(t('settings.resetConfirm'), () => {
     state = defaultState();
     saveState();
     render();
-  }
+    showToast(lang === 'de' ? 'Alle Daten zur\u00fcckgesetzt' : 'All data reset', 'info');
+  });
+}
+
+// ============================================================
+// Toast notifications & Confirm dialog
+// ============================================================
+const TOAST_ICONS = { success: '\u2714', error: '\u2718', info: '\u2139', warning: '\u26A0' };
+
+function showToast(message, type = 'success', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.innerHTML = `<span class="toast-icon">${TOAST_ICONS[type] || ''}</span><span class="toast-msg">${escHtml(message)}</span><button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.3s ease-in forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+function showConfirm(message, onConfirm) {
+  const overlay = document.getElementById('modalOverlay');
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <h2>${lang === 'de' ? 'Best\u00e4tigung' : 'Confirm'}</h2>
+    <p style="margin-bottom:20px;line-height:1.5">${escHtml(message)}</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">${lang === 'de' ? 'Abbrechen' : 'Cancel'}</button>
+      <button class="btn btn-accent" id="confirmBtn">${lang === 'de' ? 'Ja, fortfahren' : 'Yes, proceed'}</button>
+    </div>
+  `;
+  document.getElementById('confirmBtn').onclick = function() { closeModal(); onConfirm(); };
+  overlay.classList.add('show');
 }
 
 // ============================================================
@@ -1950,7 +1997,7 @@ function loadEvent(input) {
       const data = JSON.parse(e.target.result);
       // Validate it looks like an event file
       if (!data.participants && !data.competition) {
-        alert('Invalid event file');
+        showToast('Invalid event file', 'error');
         return;
       }
       // Remove metadata fields
@@ -1968,22 +2015,22 @@ function loadEvent(input) {
       saveState();
       closeModal();
       render();
-      alert(t('event.loaded'));
+      showToast(t('event.loaded'), 'success');
     } catch (err) {
-      alert('Error loading file: ' + err.message);
+      showToast('Error: ' + err.message, 'error');
     }
   };
   reader.readAsText(file);
 }
 
 function newEvent() {
-  if (confirm(t('event.newConfirm'))) {
+  showConfirm(t('event.newConfirm'), () => {
     state = defaultState();
     saveState();
-    closeModal();
     currentTab = 'dashboard';
     render();
-  }
+    showToast(lang === 'de' ? 'Neuer Wettkampf gestartet' : 'New event started', 'info');
+  });
 }
 
 function loadEventFromInput(input) {
