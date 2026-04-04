@@ -211,8 +211,9 @@ const I18N = {
       seconds: 'sec', boards: 'boards', kicks: 'kicks', count: 'Count', points: 'Points',
       formType: 'Form Type', rating: 'Rating', freeForm: 'Free Form', poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8',
       ok: 'OK', good: 'Good', outstanding: 'Outstanding',
-      won: 'Won', pointsFor: 'Pts For', pointsAgainst: 'Pts Against', vs: 'vs', wins: 'Wins', diff: 'Diff',
+      won: 'Won', lost: 'Lost', pointsFor: 'Pts For', pointsAgainst: 'Opp Pts', vs: 'vs', wins: 'Wins', diff: 'Diff',
       simplePoints: 'Points (age 6-7)', matchResult: 'Match Results (age 8+)',
+      round: 'Round', winner: 'Winner', result: 'Result', sitsOut: 'sits out',
       save: 'Save', saved: 'Saved!', print: 'Print Score Sheet', noGroup: 'Select a group to enter scores.',
       lowerBetter: '(lower is better)', higherBetter: '(higher is better)'
     },
@@ -278,8 +279,9 @@ const I18N = {
       seconds: 'Sek', boards: 'Bretter', kicks: 'Tritte', count: 'Anzahl', points: 'Punkte',
       formType: 'Formtyp', rating: 'Bewertung', freeForm: 'Freie Form', poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8',
       ok: 'OK', good: 'Gut', outstanding: 'Hervorragend',
-      won: 'Gewonnen', pointsFor: 'Pkt daf\u00fcr', pointsAgainst: 'Pkt dagegen', vs: 'gegen', wins: 'Siege', diff: 'Diff',
+      won: 'Gewonnen', lost: 'Verloren', pointsFor: 'Pkt daf\u00fcr', pointsAgainst: 'Geg. Pkt', vs: 'gegen', wins: 'Siege', diff: 'Diff',
       simplePoints: 'Punkte (Alter 6-7)', matchResult: 'Kampfergebnisse (Alter 8+)',
+      round: 'Runde', winner: 'Gewinner', result: 'Ergebnis', sitsOut: 'setzt aus',
       save: 'Speichern', saved: 'Gespeichert!', print: 'Bewertungsbogen drucken', noGroup: 'Gruppe ausw\u00e4hlen um Ergebnisse einzugeben.',
       lowerBetter: '(niedriger = besser)', higherBetter: '(h\u00f6her = besser)'
     },
@@ -1039,15 +1041,16 @@ function getGroupParticipants(groupId) {
 function renderReactionScoring() {
   const ps = getGroupParticipants(currentGroupId);
   const rankings = rankReaction(currentGroupId);
+  const n = ps.length;
 
-  let rows = ps.map(p => {
+  let rows = ps.map((p, i) => {
     const r = state.results.reaction[p.id] || {};
     const rank = rankings.find(x => x.id === p.id)?.rank || '-';
     return `<tr>
       <td>${escHtml(p.name)}</td>
-      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r1 ?? ''}" onchange="saveReaction('${p.id}','r1',this.value)" /></td>
-      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r2 ?? ''}" onchange="saveReaction('${p.id}','r2',this.value)" /></td>
-      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r3 ?? ''}" onchange="saveReaction('${p.id}','r3',this.value)" /></td>
+      <td><input class="score-input" type="number" step="0.01" min="0" tabindex="${1 + i}" value="${r.r1 ?? ''}" onchange="saveReaction('${p.id}','r1',this.value)" /></td>
+      <td><input class="score-input" type="number" step="0.01" min="0" tabindex="${1 + n + i}" value="${r.r2 ?? ''}" onchange="saveReaction('${p.id}','r2',this.value)" /></td>
+      <td><input class="score-input" type="number" step="0.01" min="0" tabindex="${1 + 2*n + i}" value="${r.r3 ?? ''}" onchange="saveReaction('${p.id}','r3',this.value)" /></td>
       <td class="score-total">${r.total != null ? r.total.toFixed(2) : '-'} ${t('scoring.seconds')}</td>
       <td><span class="rank-badge rank-${rank}">${rank}</span></td>
     </tr>`;
@@ -1088,15 +1091,16 @@ function rankReaction(groupId) {
 function renderStrengthScoring() {
   const ps = getGroupParticipants(currentGroupId);
   const rankings = rankStrength(currentGroupId);
+  const n = ps.length;
 
-  let rows = ps.map(p => {
+  let rows = ps.map((p, i) => {
     const r = state.results.strength[p.id] || {};
     const rank = rankings.find(x => x.id === p.id)?.rank || '-';
     return `<tr>
       <td>${escHtml(p.name)}</td>
-      <td><input class="score-input" type="number" min="0" value="${r.r1 ?? ''}" onchange="saveStrength('${p.id}','r1',this.value)" /></td>
-      <td><input class="score-input" type="number" min="0" value="${r.r2 ?? ''}" onchange="saveStrength('${p.id}','r2',this.value)" /></td>
-      <td><input class="score-input" type="number" min="0" value="${r.r3 ?? ''}" onchange="saveStrength('${p.id}','r3',this.value)" /></td>
+      <td><input class="score-input" type="number" min="0" tabindex="${1 + i}" value="${r.r1 ?? ''}" onchange="saveStrength('${p.id}','r1',this.value)" /></td>
+      <td><input class="score-input" type="number" min="0" tabindex="${1 + n + i}" value="${r.r2 ?? ''}" onchange="saveStrength('${p.id}','r2',this.value)" /></td>
+      <td><input class="score-input" type="number" min="0" tabindex="${1 + 2*n + i}" value="${r.r3 ?? ''}" onchange="saveStrength('${p.id}','r3',this.value)" /></td>
       <td class="score-total">${r.total != null ? r.total : '-'} ${t('scoring.boards')}</td>
       <td><span class="rank-badge rank-${rank}">${rank}</span></td>
     </tr>`;
@@ -1137,12 +1141,12 @@ function renderSpeedKickingScoring() {
   const ps = getGroupParticipants(currentGroupId);
   const rankings = rankSpeedKicking(currentGroupId);
 
-  let rows = ps.map(p => {
+  let rows = ps.map((p, i) => {
     const r = state.results.speedKicking[p.id] || {};
     const rank = rankings.find(x => x.id === p.id)?.rank || '-';
     return `<tr>
       <td>${escHtml(p.name)}</td>
-      <td><input class="score-input" type="number" min="0" value="${r.count ?? ''}" onchange="saveSpeedKicking('${p.id}',this.value)" style="width:120px" /></td>
+      <td><input class="score-input" type="number" min="0" tabindex="${1 + i}" value="${r.count ?? ''}" onchange="saveSpeedKicking('${p.id}',this.value)" style="width:120px" /></td>
       <td><span class="rank-badge rank-${rank}">${rank}</span></td>
     </tr>`;
   }).join('');
@@ -1179,13 +1183,14 @@ function renderFormScoring() {
   const rankings = rankForm(currentGroupId);
   const fs = state.settings.formScoring;
 
-  let rows = ps.map(p => {
+  const n = ps.length;
+  let rows = ps.map((p, i) => {
     const r = state.results.form[p.id] || {};
     const rank = rankings.find(x => x.id === p.id)?.rank || '-';
     return `<tr>
       <td>${escHtml(p.name)}</td>
       <td>
-        <select onchange="saveForm('${p.id}','formType',this.value)" style="min-width:130px">
+        <select tabindex="${1 + i}" onchange="saveForm('${p.id}','formType',this.value)" style="min-width:130px">
           <option value="">--</option>
           <option value="free" ${r.formType === 'free' ? 'selected' : ''}>${t('scoring.freeForm')}</option>
           <option value="poomsae1-3" ${r.formType === 'poomsae1-3' ? 'selected' : ''}>${t('scoring.poomsae13')}</option>
@@ -1193,7 +1198,7 @@ function renderFormScoring() {
         </select>
       </td>
       <td>
-        <select onchange="saveForm('${p.id}','rating',this.value)">
+        <select tabindex="${1 + n + i}" onchange="saveForm('${p.id}','rating',this.value)">
           <option value="">--</option>
           <option value="ok" ${r.rating === 'ok' ? 'selected' : ''}>${t('scoring.ok')}</option>
           <option value="good" ${r.rating === 'good' ? 'selected' : ''}>${t('scoring.good')}</option>
@@ -1242,10 +1247,8 @@ function renderKyorugiScoring() {
   const ps = getGroupParticipants(currentGroupId);
   if (ps.length === 0) return `<p>${t('scoring.noGroup')}</p>`;
 
-  // Check if all are young (6-7) or older
+  // Check if all are young (6-7)
   const allYoung = ps.every(p => calcAge(p.dob) <= 7);
-  const allOld = ps.every(p => calcAge(p.dob) >= 8);
-  const mixed = !allYoung && !allOld;
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h2>${t('scoring.kyorugi')}</h2>
@@ -1253,31 +1256,84 @@ function renderKyorugiScoring() {
   </div>`;
 
   if (allYoung) {
-    html += renderKyorugiSimple(ps);
-  } else if (allOld) {
-    html += renderKyorugiMatches(ps);
+    // Age 6-7: simple point count
+    html += `<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:12px">${t('scoring.simplePoints')}</p>`;
+    let rows = ps.map((p, i) => {
+      const r = state.results.kyorugi[p.id] || {};
+      return `<tr>
+        <td>${escHtml(p.name)}</td>
+        <td><input class="score-input" type="number" min="0" tabindex="${1 + i}" value="${r.totalPoints ?? ''}" onchange="saveKyorugiSimple('${p.id}',this.value)" style="width:120px" /></td>
+      </tr>`;
+    }).join('');
+    html += `<table><tr><th>${t('scoring.participant')}</th><th>${t('scoring.points')}</th></tr>${rows}</table>`;
   } else {
-    // Mixed: separate by age
-    const young = ps.filter(p => calcAge(p.dob) <= 7);
-    const old = ps.filter(p => calcAge(p.dob) >= 8);
-    if (young.length > 0) {
-      html += `<h3 style="margin:12px 0 8px">${t('scoring.simplePoints')}</h3>`;
-      html += renderKyorugiSimple(young);
-    }
-    if (old.length > 0) {
-      html += `<h3 style="margin:16px 0 8px">${t('scoring.matchResult')}</h3>`;
-      html += renderKyorugiMatches(old);
-    }
+    // Age 8+ (or mixed): round-robin with round-by-round entry
+    const rounds = generateRounds(ps);
+    html += rounds.map((round, rIdx) => {
+      let roundHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid var(--primary)">
+        <h3 style="margin-bottom:12px">${t('scoring.round')} ${rIdx + 1}</h3>`;
+
+      roundHtml += round.matches.map(match => {
+        const a = match.a;
+        const b = match.b;
+        const resA = getMatchResult(a.id, b.id);
+        const resB = getMatchResult(b.id, a.id);
+        const tabBase = 1 + rIdx * ps.length * 3;
+
+        return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:12px;background:#f8f9fa;border-radius:var(--radius);margin-bottom:8px">
+          <div style="text-align:center">
+            <strong style="font-size:1rem">${escHtml(a.name)}</strong>
+          </div>
+          <div style="font-weight:700;color:var(--text-light);font-size:1.1rem">${t('scoring.vs')}</div>
+          <div style="text-align:center">
+            <strong style="font-size:1rem">${escHtml(b.name)}</strong>
+          </div>
+          <div style="text-align:center">
+            <div class="form-row" style="justify-content:center;margin:0">
+              <div class="form-group"><label>${t('scoring.pointsFor')}</label>
+                <input class="score-input" type="number" min="0" value="${resA?.pointsFor ?? ''}" onchange="saveKyorugiRound('${a.id}','${b.id}','pointsFor',this.value)" />
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center">
+            <select onchange="saveKyorugiWinner('${a.id}','${b.id}',this.value)" style="padding:6px 12px;border-radius:4px;border:1px solid var(--border);font-weight:600">
+              <option value="">--</option>
+              <option value="${a.id}" ${resA?.won === true ? 'selected' : ''}>${escHtml(a.name)}</option>
+              <option value="${b.id}" ${resB?.won === true ? 'selected' : ''}>${escHtml(b.name)}</option>
+            </select>
+          </div>
+          <div style="text-align:center">
+            <div class="form-row" style="justify-content:center;margin:0">
+              <div class="form-group"><label>${t('scoring.pointsFor')}</label>
+                <input class="score-input" type="number" min="0" value="${resB?.pointsFor ?? ''}" onchange="saveKyorugiRound('${b.id}','${a.id}','pointsFor',this.value)" />
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      if (round.sitOut) {
+        roundHtml += `<p style="font-size:0.85rem;color:var(--text-light);font-style:italic">${escHtml(round.sitOut.name)} ${t('scoring.sitsOut')}</p>`;
+      }
+
+      roundHtml += `</div>`;
+      return roundHtml;
+    }).join('');
   }
 
-  // Show rankings
+  // Show standings table
   const rankings = rankKyorugi(currentGroupId);
   if (rankings.length > 0) {
     html += `<h3 style="margin:16px 0 8px">${t('scoring.rank')}</h3><table>
-      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th></tr>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.wins')}</th><th>${t('scoring.pointsFor')}</th><th>${t('scoring.pointsAgainst')}</th><th>${t('scoring.diff')}</th><th>${t('scoring.rank')}</th></tr>
       ${rankings.map(r => {
         const p = state.participants.find(x => x.id === r.id);
-        return `<tr><td>${escHtml(p?.name)}</td><td>${r.total}</td><td><span class="rank-badge rank-${r.rank}">${r.rank}</span></td></tr>`;
+        return `<tr><td>${escHtml(p?.name)}</td>
+          <td>${r.wins ?? r.total ?? '-'}</td>
+          <td>${r.ptsFor ?? '-'}</td>
+          <td>${r.ptsAgainst ?? '-'}</td>
+          <td>${r.diff ?? '-'}</td>
+          <td><span class="rank-badge rank-${r.rank}">${r.rank}</span></td></tr>`;
       }).join('')}
     </table>`;
   }
@@ -1285,15 +1341,34 @@ function renderKyorugiScoring() {
   return html;
 }
 
-function renderKyorugiSimple(ps) {
-  let rows = ps.map(p => {
-    const r = state.results.kyorugi[p.id] || {};
-    return `<tr>
-      <td>${escHtml(p.name)}</td>
-      <td><input class="score-input" type="number" min="0" value="${r.totalPoints ?? ''}" onchange="saveKyorugiSimple('${p.id}',this.value)" style="width:120px" /></td>
-    </tr>`;
-  }).join('');
-  return `<table><tr><th>${t('scoring.participant')}</th><th>${t('scoring.points')}</th></tr>${rows}</table>`;
+function generateRounds(ps) {
+  // Round-robin schedule: each participant fights every other participant once
+  // With 4: 3 rounds (2 matches each). With 3: 3 rounds (1 match each, 1 sits out)
+  const n = ps.length;
+  const pairs = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      pairs.push({ a: ps[i], b: ps[j] });
+    }
+  }
+
+  if (n === 4) {
+    // 3 rounds, 2 matches per round, everyone fights once per round
+    return [
+      { matches: [pairs[0], pairs[5]], sitOut: null },  // A-B, C-D
+      { matches: [pairs[1], pairs[4]], sitOut: null },  // A-C, B-D
+      { matches: [pairs[2], pairs[3]], sitOut: null }   // A-D, B-C
+    ];
+  } else if (n === 3) {
+    // 3 rounds, 1 match per round, 1 sits out
+    return [
+      { matches: [pairs[0]], sitOut: ps[2] },  // A-B, C sits out
+      { matches: [pairs[1]], sitOut: ps[1] },  // A-C, B sits out
+      { matches: [pairs[2]], sitOut: ps[0] }   // B-C, A sits out
+    ];
+  }
+  // Fallback: one round per pair
+  return pairs.map(p => ({ matches: [p], sitOut: null }));
 }
 
 function saveKyorugiSimple(pId, val) {
@@ -1304,82 +1379,39 @@ function saveKyorugiSimple(pId, val) {
   render();
 }
 
-function renderKyorugiMatches(ps) {
-  // Generate all pair combinations
-  const pairs = [];
-  for (let i = 0; i < ps.length; i++) {
-    for (let j = i + 1; j < ps.length; j++) {
-      pairs.push([ps[i], ps[j]]);
-    }
-  }
-
-  let html = pairs.map(([a, b]) => {
-    const matchKey = a.id + '_' + b.id;
-    const existingA = getMatchResult(a.id, b.id);
-    const existingB = getMatchResult(b.id, a.id);
-    return `<div class="kyorugi-match">
-      <div class="fighter">
-        <strong>${escHtml(a.name)}</strong><br/>
-        <label style="font-size:0.8rem">${t('scoring.won')}: <select onchange="saveKyorugiMatch('${a.id}','${b.id}',this.value,null,null)">
-          <option value="">--</option>
-          <option value="yes" ${existingA?.won === true ? 'selected' : ''}>${lang === 'de' ? 'Ja' : 'Yes'}</option>
-          <option value="no" ${existingA?.won === false ? 'selected' : ''}>${lang === 'de' ? 'Nein' : 'No'}</option>
-        </select></label>
-        <label style="font-size:0.8rem">${t('scoring.pointsFor')}: <input class="score-input" type="number" min="0" value="${existingA?.pointsFor ?? ''}" onchange="saveKyorugiMatchPts('${a.id}','${b.id}','pointsFor',this.value)" /></label>
-      </div>
-      <div class="vs">${t('scoring.vs')}</div>
-      <div class="fighter">
-        <strong>${escHtml(b.name)}</strong><br/>
-        <label style="font-size:0.8rem">${t('scoring.won')}: <select onchange="saveKyorugiMatch('${b.id}','${a.id}',this.value,null,null)">
-          <option value="">--</option>
-          <option value="yes" ${existingB?.won === true ? 'selected' : ''}>${lang === 'de' ? 'Ja' : 'Yes'}</option>
-          <option value="no" ${existingB?.won === false ? 'selected' : ''}>${lang === 'de' ? 'Nein' : 'No'}</option>
-        </select></label>
-        <label style="font-size:0.8rem">${t('scoring.pointsFor')}: <input class="score-input" type="number" min="0" value="${existingB?.pointsFor ?? ''}" onchange="saveKyorugiMatchPts('${b.id}','${a.id}','pointsFor',this.value)" /></label>
-      </div>
-    </div>`;
-  }).join('');
-
-  return html;
-}
-
 function getMatchResult(pId, oppId) {
   const r = state.results.kyorugi[pId];
   if (!r?.matches) return null;
   return r.matches.find(m => m.opponentId === oppId);
 }
 
-function saveKyorugiMatch(pId, oppId, wonVal, ptsFor, ptsAgainst) {
-  if (!state.results.kyorugi[pId]) state.results.kyorugi[pId] = { matches: [] };
-  if (!state.results.kyorugi[pId].matches) state.results.kyorugi[pId].matches = [];
-  let match = state.results.kyorugi[pId].matches.find(m => m.opponentId === oppId);
-  if (!match) {
-    match = { opponentId: oppId, won: null, pointsFor: null, pointsAgainst: null };
-    state.results.kyorugi[pId].matches.push(match);
-  }
-  if (wonVal !== null) match.won = wonVal === 'yes' ? true : wonVal === 'no' ? false : null;
-  if (ptsFor !== null) match.pointsFor = ptsFor === '' ? null : parseInt(ptsFor);
-  if (ptsAgainst !== null) match.pointsAgainst = ptsAgainst === '' ? null : parseInt(ptsAgainst);
+function saveKyorugiWinner(aId, bId, winnerId) {
+  // Ensure both have match entries
+  [aId, bId].forEach(id => {
+    if (!state.results.kyorugi[id]) state.results.kyorugi[id] = { matches: [] };
+    if (!state.results.kyorugi[id].matches) state.results.kyorugi[id].matches = [];
+  });
+  const oppId = winnerId === aId ? bId : aId;
 
-  // Auto-sync opponent: if A won, B lost
-  if (wonVal !== null) {
-    if (!state.results.kyorugi[oppId]) state.results.kyorugi[oppId] = { matches: [] };
-    if (!state.results.kyorugi[oppId].matches) state.results.kyorugi[oppId].matches = [];
-    let oppMatch = state.results.kyorugi[oppId].matches.find(m => m.opponentId === pId);
-    if (!oppMatch) {
-      oppMatch = { opponentId: pId, won: null, pointsFor: null, pointsAgainst: null };
-      state.results.kyorugi[oppId].matches.push(oppMatch);
-    }
-    if (match.won === true) oppMatch.won = false;
-    else if (match.won === false) oppMatch.won = true;
-    else oppMatch.won = null;
+  // Update or create match for A
+  let matchA = state.results.kyorugi[aId].matches.find(m => m.opponentId === bId);
+  if (!matchA) { matchA = { opponentId: bId, won: null, pointsFor: null, pointsAgainst: null }; state.results.kyorugi[aId].matches.push(matchA); }
+
+  let matchB = state.results.kyorugi[bId].matches.find(m => m.opponentId === aId);
+  if (!matchB) { matchB = { opponentId: aId, won: null, pointsFor: null, pointsAgainst: null }; state.results.kyorugi[bId].matches.push(matchB); }
+
+  if (winnerId === '') {
+    matchA.won = null; matchB.won = null;
+  } else {
+    matchA.won = winnerId === aId;
+    matchB.won = winnerId === bId;
   }
 
   saveState();
   render();
 }
 
-function saveKyorugiMatchPts(pId, oppId, field, val) {
+function saveKyorugiRound(pId, oppId, field, val) {
   if (!state.results.kyorugi[pId]) state.results.kyorugi[pId] = { matches: [] };
   if (!state.results.kyorugi[pId].matches) state.results.kyorugi[pId].matches = [];
   let match = state.results.kyorugi[pId].matches.find(m => m.opponentId === oppId);
@@ -1389,7 +1421,7 @@ function saveKyorugiMatchPts(pId, oppId, field, val) {
   }
   match[field] = val === '' ? null : parseInt(val);
 
-  // Sync opponent's pointsAgainst/pointsFor
+  // Sync opponent
   if (!state.results.kyorugi[oppId]) state.results.kyorugi[oppId] = { matches: [] };
   if (!state.results.kyorugi[oppId].matches) state.results.kyorugi[oppId].matches = [];
   let oppMatch = state.results.kyorugi[oppId].matches.find(m => m.opponentId === pId);
@@ -1412,14 +1444,14 @@ function rankKyorugi(groupId) {
     const age = calcAge(p.dob);
     if (age <= 7) {
       if (r?.totalPoints != null) {
-        scored.push({ id: p.id, wins: 0, diff: 0, total: r.totalPoints, isSimple: true });
+        scored.push({ id: p.id, wins: r.totalPoints, ptsFor: r.totalPoints, ptsAgainst: 0, diff: r.totalPoints, total: r.totalPoints, isSimple: true });
       }
     } else {
       if (r?.matches && r.matches.length > 0) {
         const wins = r.matches.filter(m => m.won === true).length;
         const ptsFor = r.matches.reduce((s, m) => s + (m.pointsFor || 0), 0);
         const ptsAgainst = r.matches.reduce((s, m) => s + (m.pointsAgainst || 0), 0);
-        scored.push({ id: p.id, wins, diff: ptsFor - ptsAgainst, total: wins * 1000 + (ptsFor - ptsAgainst + 500), isSimple: false });
+        scored.push({ id: p.id, wins, ptsFor, ptsAgainst, diff: ptsFor - ptsAgainst, total: wins * 1000 + (ptsFor - ptsAgainst + 500), isSimple: false });
       }
     }
   }
@@ -1439,8 +1471,18 @@ function rankKyorugi(groupId) {
 // Rank helper
 // ============================================================
 function assignRanks(sorted) {
+  // Shared ranks for ties: if two have the same total, they share the rank
+  // e.g. 1st, 2nd, 2nd, 3rd (not 1st, 2nd, 2nd, 4th)
+  let currentRank = 1;
   sorted.forEach((item, i) => {
-    item.rank = i + 1;
+    if (i === 0) {
+      item.rank = 1;
+    } else if (item.total === sorted[i - 1].total) {
+      item.rank = sorted[i - 1].rank; // same rank as previous
+    } else {
+      currentRank++;
+      item.rank = currentRank;
+    }
   });
   return sorted;
 }
