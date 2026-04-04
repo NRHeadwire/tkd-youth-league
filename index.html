@@ -170,7 +170,10 @@ const I18N = {
       theme: 'Group Name Theme', themePlaceholder: 'e.g. Animals, Planets, Warriors...',
       generateNames: 'Generate Names', resetNames: 'Reset Names',
       themeHint: 'Pick a theme or type your own to generate creative group names',
-      presets: 'Presets'
+      presets: 'Presets', customThemes: 'Custom Themes',
+      importCsv: 'Import Name List (CSV)',
+      csvHint: 'CSV format: Category in column A, Names in column B. One name per row.',
+      csvImported: 'themes imported!', clearCustom: 'Clear Custom Themes'
     },
     scoring: {
       selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
@@ -234,7 +237,10 @@ const I18N = {
       theme: 'Gruppennamen-Thema', themePlaceholder: 'z.B. Tiere, Planeten, Krieger...',
       generateNames: 'Namen generieren', resetNames: 'Namen zur\u00fccksetzen',
       themeHint: 'W\u00e4hle ein Thema oder gib ein eigenes ein, um kreative Gruppennamen zu erstellen',
-      presets: 'Vorlagen'
+      presets: 'Vorlagen', customThemes: 'Eigene Themen',
+      importCsv: 'Namensliste importieren (CSV)',
+      csvHint: 'CSV-Format: Kategorie in Spalte A, Namen in Spalte B. Ein Name pro Zeile.',
+      csvImported: 'Themen importiert!', clearCustom: 'Eigene Themen l\u00f6schen'
     },
     scoring: {
       selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
@@ -766,6 +772,107 @@ function resetGroupNames() {
 }
 
 // ============================================================
+// Custom Theme CSV Import
+// ============================================================
+let customThemes = loadCustomThemes();
+
+function loadCustomThemes() {
+  try {
+    const s = localStorage.getItem('tkdCustomThemes');
+    return s ? JSON.parse(s) : {};
+  } catch (e) { return {}; }
+}
+
+function saveCustomThemes() {
+  localStorage.setItem('tkdCustomThemes', JSON.stringify(customThemes));
+}
+
+function importThemeCsv(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let rows;
+    const fileName = file.name.toLowerCase();
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    } else {
+      // CSV / TSV parsing
+      const text = e.target.result;
+      rows = text.split(/\r?\n/).map(line => {
+        // Support comma, semicolon, or tab as delimiter
+        if (line.includes('\t')) return line.split('\t');
+        if (line.includes(';')) return line.split(';');
+        return line.split(',');
+      });
+    }
+
+    const themes = {};
+    for (const row of rows) {
+      const category = (row[0] || '').toString().trim();
+      const name = (row[1] || '').toString().trim();
+      if (!category || !name) continue;
+      // Skip header row
+      if (category.toLowerCase() === 'category' || category.toLowerCase() === 'kategorie') continue;
+      if (!themes[category]) themes[category] = [];
+      themes[category].push(name);
+    }
+
+    const count = Object.keys(themes).length;
+    if (count === 0) {
+      alert(lang === 'de' ? 'Keine Themen gefunden. Format: Kategorie, Name' : 'No themes found. Format: Category, Name');
+      return;
+    }
+
+    // Merge into custom themes
+    Object.assign(customThemes, themes);
+    saveCustomThemes();
+    input.value = '';
+    render();
+    alert(count + ' ' + t('groups.csvImported'));
+  };
+  if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function clearCustomThemes() {
+  customThemes = {};
+  saveCustomThemes();
+  render();
+}
+
+function getAllThemes() {
+  // Merge built-in and custom themes
+  const all = {};
+  for (const [key, theme] of Object.entries(THEME_NAMES)) {
+    all[key] = { label: lang === 'de' ? theme.de : theme.en, names: theme.names, builtin: true };
+  }
+  for (const [category, names] of Object.entries(customThemes)) {
+    const key = 'custom_' + category.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    all[key] = { label: category, names, builtin: false };
+  }
+  return all;
+}
+
+// Update getThemeNames to also search custom themes
+const _origGetThemeNames = getThemeNames;
+getThemeNames = function(themeInput) {
+  const input = themeInput.toLowerCase().trim();
+  // Check custom themes first
+  for (const [category, names] of Object.entries(customThemes)) {
+    if (category.toLowerCase() === input || category.toLowerCase().includes(input)) {
+      return names;
+    }
+  }
+  return _origGetThemeNames(themeInput);
+};
+
+// ============================================================
 // Groups Display
 // ============================================================
 function renderGroups() {
@@ -794,9 +901,14 @@ function renderGroups() {
     </div>`;
   }).join('');
 
-  const presetBtns = Object.entries(THEME_NAMES).map(([key, theme]) =>
-    `<button class="btn btn-sm btn-outline" onclick="document.getElementById('themeInput').value='${key}';applyThemeNames('${key}')" style="font-size:0.75rem">${lang === 'de' ? theme.de : theme.en}</button>`
+  const allThemes = getAllThemes();
+  const builtinBtns = Object.entries(allThemes).filter(([,v]) => v.builtin).map(([key, theme]) =>
+    `<button class="btn btn-sm btn-outline" onclick="document.getElementById('themeInput').value='${key}';applyThemeNames('${key}')" style="font-size:0.75rem">${escHtml(theme.label)}</button>`
   ).join('');
+  const customBtns = Object.entries(allThemes).filter(([,v]) => !v.builtin).map(([key, theme]) =>
+    `<button class="btn btn-sm btn-primary" onclick="document.getElementById('themeInput').value='${escHtml(theme.label)}';applyThemeNames('${escHtml(theme.label)}')" style="font-size:0.75rem">${escHtml(theme.label)} (${theme.names.length})</button>`
+  ).join('');
+  const hasCustom = Object.keys(customThemes).length > 0;
 
   return `
     <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap" class="no-print">
@@ -812,9 +924,21 @@ function renderGroups() {
         <button class="btn btn-primary" onclick="applyThemeNames(document.getElementById('themeInput').value)">${t('groups.generateNames')}</button>
         <button class="btn btn-outline" onclick="resetGroupNames()">${t('groups.resetNames')}</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${hasCustom ? '12px' : '0'}">
         <span style="font-size:0.8rem;color:var(--text-light);align-self:center;margin-right:4px">${t('groups.presets')}:</span>
-        ${presetBtns}
+        ${builtinBtns}
+      </div>
+      ${hasCustom ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        <span style="font-size:0.8rem;color:var(--text-light);align-self:center;margin-right:4px">${t('groups.customThemes')}:</span>
+        ${customBtns}
+      </div>` : ''}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)">
+        <label class="btn btn-sm btn-outline" style="cursor:pointer">
+          ${t('groups.importCsv')}
+          <input type="file" accept=".csv,.tsv,.xlsx,.xls,.txt" onchange="importThemeCsv(this)" style="display:none" />
+        </label>
+        <span style="font-size:0.8rem;color:var(--text-light)">${t('groups.csvHint')}</span>
+        ${hasCustom ? `<button class="btn btn-sm btn-outline" onclick="clearCustomThemes()" style="margin-left:auto;color:var(--accent)">${t('groups.clearCustom')}</button>` : ''}
       </div>
     </div>
     <div class="group-grid">${cards}</div>
