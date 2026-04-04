@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TKD Youth League</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1a237e;
+  --primary-light: #3949ab;
+  --accent: #e53935;
+  --bg: #f5f5f5;
+  --card: #fff;
+  --text: #212121;
+  --text-light: #757575;
+  --border: #e0e0e0;
+  --success: #43a047;
+  --warning: #ff9800;
+  --radius: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+header { background: var(--primary); color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+header h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 8px; }
+header h1::before { content: '\1F94B'; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.lang-toggle { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+.lang-toggle:hover { background: rgba(255,255,255,0.25); }
+
+nav { background: var(--card); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; padding: 0 16px; }
+nav button { background: none; border: none; padding: 12px 20px; cursor: pointer; font-size: 0.9rem; color: var(--text-light); border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; }
+nav button:hover { color: var(--text); background: #f0f0f0; }
+nav button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card h2 { font-size: 1.1rem; margin-bottom: 16px; color: var(--primary); }
+.card h3 { font-size: 1rem; margin-bottom: 12px; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: var(--card); border-radius: var(--radius); padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.stat-card .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+.stat-card .label { font-size: 0.8rem; color: var(--text-light); margin-top: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { background: #f8f9fa; font-weight: 600; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; position: sticky; top: 0; }
+tr:hover { background: #f8f9fa; }
+tr.inactive { opacity: 0.5; }
+
+.btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { background: #c62828; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #388e3c; }
+.btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: #f0f0f0; }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+.btn-warning { background: var(--warning); color: #fff; }
+
+input, select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; font-family: inherit; }
+input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,35,126,0.1); }
+input[type="file"] { padding: 6px; }
+
+.form-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 0.8rem; color: var(--text-light); font-weight: 500; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+.badge-active { background: #e8f5e9; color: #2e7d32; }
+.badge-inactive { background: #ffebee; color: #c62828; }
+
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.group-card { background: var(--card); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; }
+.group-card .group-header { background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 600; font-size: 0.95rem; }
+.group-card .group-body { padding: 12px; }
+.group-card .member { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; display: flex; justify-content: space-between; }
+.group-card .member:last-child { border-bottom: none; }
+
+.discipline-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.discipline-tabs button { padding: 8px 16px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+.discipline-tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.score-input { width: 80px; text-align: center; }
+.score-total { font-weight: 700; color: var(--primary); }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; font-weight: 700; font-size: 0.85rem; }
+.rank-1 { background: #ffd700; color: #333; }
+.rank-2 { background: #c0c0c0; color: #333; }
+.rank-3 { background: #cd7f32; color: #fff; }
+.rank-4 { background: #e0e0e0; color: #666; }
+
+.group-selector { margin-bottom: 16px; }
+.group-selector select { min-width: 200px; }
+
+.alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 12px; font-size: 0.9rem; }
+.alert-warning { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+.alert-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+.alert-info { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+
+.kyorugi-match { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 8px; }
+.kyorugi-match .vs { font-weight: 700; color: var(--text-light); }
+.kyorugi-match .fighter { text-align: center; }
+
+.completion-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.completion-dot.complete { background: var(--success); }
+.completion-dot.incomplete { background: var(--border); }
+
+.print-only { display: none; }
+@media print {
+  header, nav, .no-print, .btn { display: none !important; }
+  .print-only { display: block !important; }
+  .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+  body { background: #fff; }
+  main { max-width: 100%; padding: 0; }
+}
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--card); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal h2 { margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="headerTitle">TKD Youth League</h1>
+  <div class="header-actions">
+    <button class="lang-toggle" onclick="toggleLang()" id="langBtn">DE</button>
+  </div>
+</header>
+
+<nav id="mainNav"></nav>
+
+<main id="mainContent"></main>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ============================================================
+// i18n
+// ============================================================
+const I18N = {
+  en: {
+    title: 'TKD Youth League',
+    tabs: { dashboard: 'Dashboard', participants: 'Participants', groups: 'Groups', scoring: 'Scoring', rankings: 'Rankings', certificates: 'Certificates', settings: 'Settings' },
+    dashboard: { totalParticipants: 'Participants', activeParticipants: 'Active', totalGroups: 'Groups', completion: 'Completion', welcome: 'Welcome to TKD Youth League Competition Manager', setupHint: 'Start by importing participants or adding them manually in the Participants tab.' },
+    participants: {
+      import: 'Import Excel', importHint: 'Expected columns: Name, DOB (date), Weight (kg), Belt',
+      addManual: 'Add Participant', name: 'Name', dob: 'Date of Birth', weight: 'Weight (kg)', belt: 'Belt',
+      age: 'Age', group: 'Group', status: 'Status', actions: 'Actions', active: 'Active', inactive: 'Inactive',
+      deactivate: 'Deactivate', activate: 'Activate', add: 'Add', resortGroups: 'Re-sort Groups',
+      noParticipants: 'No participants yet. Import an Excel file or add manually.',
+      confirmDeactivate: 'Deactivate this participant?', total: 'Total', of: 'of',
+      exportExcel: 'Export Excel'
+    },
+    groups: {
+      noGroups: 'No groups yet. Add participants and click "Re-sort Groups".',
+      groupName: 'Group', members: 'members', ageRange: 'Ages', resort: 'Re-sort Groups',
+      theme: 'Group Name Theme', themePlaceholder: 'e.g. Animals, Planets, Warriors...',
+      generateNames: 'Generate Names', resetNames: 'Reset Names',
+      themeHint: 'Pick a theme or type your own to generate creative group names',
+      presets: 'Presets'
+    },
+    scoring: {
+      selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
+      reaction: 'Reaction', strength: 'Strength', speedKicking: 'Speed Kicking', form: 'Form', kyorugi: 'Kyorugi',
+      r1: 'R1', r2: 'R2', r3: 'R3', total: 'Total', rank: 'Rank', participant: 'Participant',
+      seconds: 'sec', boards: 'boards', kicks: 'kicks', count: 'Count', points: 'Points',
+      formType: 'Form Type', rating: 'Rating', freeForm: 'Free Form', poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8',
+      ok: 'OK', good: 'Good', outstanding: 'Outstanding',
+      won: 'Won', pointsFor: 'Pts For', pointsAgainst: 'Pts Against', vs: 'vs', wins: 'Wins', diff: 'Diff',
+      simplePoints: 'Points (age 6-7)', matchResult: 'Match Results (age 8+)',
+      save: 'Save', saved: 'Saved!', print: 'Print Score Sheet', noGroup: 'Select a group to enter scores.',
+      lowerBetter: '(lower is better)', higherBetter: '(higher is better)'
+    },
+    rankings: {
+      overallRanking: 'Overall Ranking', group: 'Group', participant: 'Participant',
+      total: 'Total Points', place: 'Place', noData: 'No scoring data yet.',
+      reaction: 'RE', strength: 'ST', speedKicking: 'SK', form: 'FO', kyorugi: 'KY',
+      scoreAndRank: 'Score (Rank)', pts: 'pts'
+    },
+    certificates: {
+      generate: 'Generate Certificates (PDF)', generating: 'Generating...',
+      preview: 'Preview', download: 'Download PDF',
+      noData: 'Complete all scoring first to generate certificates.',
+      certificate: 'Certificate', place: 'Place', overallResult: 'Overall Result',
+      discipline: 'Discipline', score: 'Score', placement: 'Placement',
+      exportResults: 'Export Results (Excel)', congratulations: 'Congratulations!'
+    },
+    settings: {
+      competitionInfo: 'Competition Info', compName: 'Competition Name', compDate: 'Date', compLocation: 'Location',
+      placementPoints: 'Placement Points', place: 'Place', points: 'Points',
+      formScoring: 'Form Scoring', formType: 'Form Type', ratingLevel: 'Rating', pointsValue: 'Points',
+      save: 'Save Settings', saved: 'Settings saved!', reset: 'Reset All Data',
+      resetConfirm: 'This will delete ALL data. Are you sure?', freeForm: 'Free Form',
+      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Good', outstanding: 'Outstanding'
+    },
+    belts: { white: 'White', whiteYellow: 'White-Yellow', yellow: 'Yellow', yellowGreen: 'Yellow-Green', green: 'Green', greenBlue: 'Green-Blue', blue: 'Blue', blueRed: 'Blue-Red', red: 'Red', redBlack: 'Red-Black', black: 'Black' }
+  },
+  de: {
+    title: 'TKD Jugendliga',
+    tabs: { dashboard: 'Dashboard', participants: 'Teilnehmer', groups: 'Gruppen', scoring: 'Bewertung', rankings: 'Rangliste', certificates: 'Urkunden', settings: 'Einstellungen' },
+    dashboard: { totalParticipants: 'Teilnehmer', activeParticipants: 'Aktiv', totalGroups: 'Gruppen', completion: 'Fortschritt', welcome: 'Willkommen beim TKD Jugendliga Wettkampf-Manager', setupHint: 'Beginne mit dem Import von Teilnehmern oder f\u00fcge sie manuell im Teilnehmer-Tab hinzu.' },
+    participants: {
+      import: 'Excel importieren', importHint: 'Erwartete Spalten: Name, Geburtsdatum, Gewicht (kg), G\u00fcrtel',
+      addManual: 'Teilnehmer hinzuf\u00fcgen', name: 'Name', dob: 'Geburtsdatum', weight: 'Gewicht (kg)', belt: 'G\u00fcrtel',
+      age: 'Alter', group: 'Gruppe', status: 'Status', actions: 'Aktionen', active: 'Aktiv', inactive: 'Inaktiv',
+      deactivate: 'Deaktivieren', activate: 'Aktivieren', add: 'Hinzuf\u00fcgen', resortGroups: 'Gruppen neu sortieren',
+      noParticipants: 'Noch keine Teilnehmer. Excel-Datei importieren oder manuell hinzuf\u00fcgen.',
+      confirmDeactivate: 'Diesen Teilnehmer deaktivieren?', total: 'Gesamt', of: 'von',
+      exportExcel: 'Excel exportieren'
+    },
+    groups: {
+      noGroups: 'Noch keine Gruppen. Teilnehmer hinzuf\u00fcgen und "Gruppen neu sortieren" klicken.',
+      groupName: 'Gruppe', members: 'Mitglieder', ageRange: 'Alter', resort: 'Gruppen neu sortieren',
+      theme: 'Gruppennamen-Thema', themePlaceholder: 'z.B. Tiere, Planeten, Krieger...',
+      generateNames: 'Namen generieren', resetNames: 'Namen zur\u00fccksetzen',
+      themeHint: 'W\u00e4hle ein Thema oder gib ein eigenes ein, um kreative Gruppennamen zu erstellen',
+      presets: 'Vorlagen'
+    },
+    scoring: {
+      selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
+      reaction: 'Reaktion', strength: 'Kraft', speedKicking: 'Schnelltritte', form: 'Form', kyorugi: 'Kyorugi',
+      r1: 'R1', r2: 'R2', r3: 'R3', total: 'Gesamt', rank: 'Rang', participant: 'Teilnehmer',
+      seconds: 'Sek', boards: 'Bretter', kicks: 'Tritte', count: 'Anzahl', points: 'Punkte',
+      formType: 'Formtyp', rating: 'Bewertung', freeForm: 'Freie Form', poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8',
+      ok: 'OK', good: 'Gut', outstanding: 'Hervorragend',
+      won: 'Gewonnen', pointsFor: 'Pkt daf\u00fcr', pointsAgainst: 'Pkt dagegen', vs: 'gegen', wins: 'Siege', diff: 'Diff',
+      simplePoints: 'Punkte (Alter 6-7)', matchResult: 'Kampfergebnisse (Alter 8+)',
+      save: 'Speichern', saved: 'Gespeichert!', print: 'Bewertungsbogen drucken', noGroup: 'Gruppe ausw\u00e4hlen um Ergebnisse einzugeben.',
+      lowerBetter: '(niedriger = besser)', higherBetter: '(h\u00f6her = besser)'
+    },
+    rankings: {
+      overallRanking: 'Gesamtrangliste', group: 'Gruppe', participant: 'Teilnehmer',
+      total: 'Gesamtpunkte', place: 'Platz', noData: 'Noch keine Bewertungsdaten.',
+      reaction: 'RE', strength: 'KR', speedKicking: 'ST', form: 'FO', kyorugi: 'KY',
+      scoreAndRank: 'Ergebnis (Rang)', pts: 'Pkt'
+    },
+    certificates: {
+      generate: 'Urkunden erstellen (PDF)', generating: 'Wird erstellt...',
+      preview: 'Vorschau', download: 'PDF herunterladen',
+      noData: 'Zuerst alle Bewertungen abschliessen um Urkunden zu erstellen.',
+      certificate: 'Urkunde', place: 'Platz', overallResult: 'Gesamtergebnis',
+      discipline: 'Disziplin', score: 'Ergebnis', placement: 'Platzierung',
+      exportResults: 'Ergebnisse exportieren (Excel)', congratulations: 'Herzlichen Gl\u00fcckwunsch!'
+    },
+    settings: {
+      competitionInfo: 'Wettkampfinformationen', compName: 'Wettkampfname', compDate: 'Datum', compLocation: 'Ort',
+      placementPoints: 'Platzierungspunkte', place: 'Platz', points: 'Punkte',
+      formScoring: 'Form-Bewertung', formType: 'Formtyp', ratingLevel: 'Bewertung', pointsValue: 'Punkte',
+      save: 'Einstellungen speichern', saved: 'Einstellungen gespeichert!', reset: 'Alle Daten zur\u00fccksetzen',
+      resetConfirm: 'Dies l\u00f6scht ALLE Daten. Bist du sicher?', freeForm: 'Freie Form',
+      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Gut', outstanding: 'Hervorragend'
+    },
+    belts: { white: 'Weiss', whiteYellow: 'Weiss-Gelb', yellow: 'Gelb', yellowGreen: 'Gelb-Gr\u00fcn', green: 'Gr\u00fcn', greenBlue: 'Gr\u00fcn-Blau', blue: 'Blau', blueRed: 'Blau-Rot', red: 'Rot', redBlack: 'Rot-Schwarz', black: 'Schwarz' }
+  }
+};
+
+// ============================================================
+// Belt definitions
+// ============================================================
+const BELTS = [
+  { id: 'white', key: 'white' },
+  { id: 'whiteYellow', key: 'whiteYellow' },
+  { id: 'yellow', key: 'yellow' },
+  { id: 'yellowGreen', key: 'yellowGreen' },
+  { id: 'green', key: 'green' },
+  { id: 'greenBlue', key: 'greenBlue' },
+  { id: 'blue', key: 'blue' },
+  { id: 'blueRed', key: 'blueRed' },
+  { id: 'red', key: 'red' },
+  { id: 'redBlack', key: 'redBlack' },
+  { id: 'black', key: 'black' }
+];
+
+const DISCIPLINES = ['reaction', 'strength', 'speedKicking', 'form', 'kyorugi'];
+
+// ============================================================
+// State management
+// ============================================================
+let state = loadState();
+let lang = localStorage.getItem('tkdLang') || 'en';
+let currentTab = 'dashboard';
+let currentDiscipline = 'reaction';
+let currentGroupId = null;
+
+function defaultState() {
+  return {
+    competition: { name: 'TKD Youth League 2026', date: '', location: '' },
+    settings: {
+      placementPoints: { '1': 6, '2': 4, '3': 2, '4': 1 },
+      formScoring: {
+        free: { ok: 1, good: 2, outstanding: 3 },
+        'poomsae1-3': { ok: 1.5, good: 2.5, outstanding: 3.5 },
+        'poomsae4-8': { ok: 2, good: 3, outstanding: 4 }
+      }
+    },
+    participants: [],
+    groups: [],
+    results: { reaction: {}, strength: {}, speedKicking: {}, form: {}, kyorugi: {} }
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('tkdLeagueState');
+    if (s) {
+      const parsed = JSON.parse(s);
+      const def = defaultState();
+      // Merge missing keys
+      if (!parsed.results) parsed.results = def.results;
+      DISCIPLINES.forEach(d => { if (!parsed.results[d]) parsed.results[d] = {}; });
+      if (!parsed.settings) parsed.settings = def.settings;
+      if (!parsed.settings.formScoring) parsed.settings.formScoring = def.settings.formScoring;
+      if (!parsed.settings.placementPoints) parsed.settings.placementPoints = def.settings.placementPoints;
+      if (!parsed.competition) parsed.competition = def.competition;
+      return parsed;
+    }
+  } catch (e) {}
+  return defaultState();
+}
+
+function saveState() {
+  localStorage.setItem('tkdLeagueState', JSON.stringify(state));
+}
+
+function t(path) {
+  const parts = path.split('.');
+  let obj = I18N[lang];
+  for (const p of parts) { obj = obj?.[p]; }
+  return obj || path;
+}
+
+function beltName(beltId) {
+  return t('belts.' + beltId) || beltId;
+}
+
+function beltIndex(beltId) {
+  return BELTS.findIndex(b => b.id === beltId);
+}
+
+function calcAge(dob) {
+  if (!dob) return 0;
+  const d = new Date(dob);
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age;
+}
+
+function generateId() {
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+function toggleLang() {
+  lang = lang === 'en' ? 'de' : 'en';
+  localStorage.setItem('tkdLang', lang);
+  render();
+}
+
+function render() {
+  document.getElementById('headerTitle').textContent = t('title');
+  document.getElementById('langBtn').textContent = lang === 'en' ? 'DE' : 'EN';
+  renderNav();
+  renderContent();
+}
+
+function renderNav() {
+  const nav = document.getElementById('mainNav');
+  const tabs = ['dashboard', 'participants', 'groups', 'scoring', 'rankings', 'certificates', 'settings'];
+  nav.innerHTML = tabs.map(tab =>
+    `<button class="${currentTab === tab ? 'active' : ''}" onclick="switchTab('${tab}')">${t('tabs.' + tab)}</button>`
+  ).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  render();
+}
+
+function renderContent() {
+  const main = document.getElementById('mainContent');
+  switch (currentTab) {
+    case 'dashboard': main.innerHTML = renderDashboard(); break;
+    case 'participants': main.innerHTML = renderParticipants(); break;
+    case 'groups': main.innerHTML = renderGroups(); break;
+    case 'scoring': main.innerHTML = renderScoring(); break;
+    case 'rankings': main.innerHTML = renderRankings(); break;
+    case 'certificates': main.innerHTML = renderCertificates(); break;
+    case 'settings': main.innerHTML = renderSettings(); break;
+  }
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+function renderDashboard() {
+  const active = state.participants.filter(p => p.active !== false);
+  const total = state.participants.length;
+  const groups = state.groups.length;
+  const completionPct = calcCompletionPct();
+
+  let warning = '';
+  if (active.length > 0 && active.length < 10) warning = `<div class="alert alert-warning">${lang === 'de' ? 'Weniger als 10 aktive Teilnehmer!' : 'Fewer than 10 active participants!'}</div>`;
+  if (active.length > 50) warning = `<div class="alert alert-warning">${lang === 'de' ? 'Mehr als 50 Teilnehmer!' : 'More than 50 participants!'}</div>`;
+
+  return `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="num">${total}</div><div class="label">${t('dashboard.totalParticipants')}</div></div>
+      <div class="stat-card"><div class="num">${active.length}</div><div class="label">${t('dashboard.activeParticipants')}</div></div>
+      <div class="stat-card"><div class="num">${groups}</div><div class="label">${t('dashboard.totalGroups')}</div></div>
+      <div class="stat-card"><div class="num">${completionPct}%</div><div class="label">${t('dashboard.completion')}</div></div>
+    </div>
+    ${warning}
+    ${total === 0 ? `<div class="card"><p>${t('dashboard.setupHint')}</p></div>` : ''}
+    ${groups > 0 ? renderDashboardDisciplineStatus() : ''}
+  `;
+}
+
+function calcCompletionPct() {
+  const active = state.participants.filter(p => p.active !== false);
+  if (active.length === 0) return 0;
+  let filled = 0, total = active.length * 5;
+  for (const p of active) {
+    if (state.results.reaction[p.id]?.total != null) filled++;
+    if (state.results.strength[p.id]?.total != null) filled++;
+    if (state.results.speedKicking[p.id]?.count != null) filled++;
+    if (state.results.form[p.id]?.points != null) filled++;
+    if (state.results.kyorugi[p.id]?.totalPoints != null || (state.results.kyorugi[p.id]?.matches && state.results.kyorugi[p.id].matches.length > 0)) filled++;
+  }
+  return Math.round((filled / total) * 100);
+}
+
+function renderDashboardDisciplineStatus() {
+  const active = state.participants.filter(p => p.active !== false);
+  const disciplines = [
+    { key: 'reaction', check: id => state.results.reaction[id]?.total != null },
+    { key: 'strength', check: id => state.results.strength[id]?.total != null },
+    { key: 'speedKicking', check: id => state.results.speedKicking[id]?.count != null },
+    { key: 'form', check: id => state.results.form[id]?.points != null },
+    { key: 'kyorugi', check: id => state.results.kyorugi[id]?.totalPoints != null || (state.results.kyorugi[id]?.matches?.length > 0) }
+  ];
+
+  let rows = disciplines.map(d => {
+    const done = active.filter(p => d.check(p.id)).length;
+    return `<tr><td>${t('scoring.' + d.key)}</td><td>${done} / ${active.length}</td><td>
+      <span class="completion-dot ${done === active.length ? 'complete' : 'incomplete'}"></span>
+    </td></tr>`;
+  }).join('');
+
+  return `<div class="card"><h2>${t('dashboard.completion')}</h2><table><th>${t('scoring.selectDiscipline')}</th><th>${t('dashboard.completion')}</th><th></th>${rows}</table></div>`;
+}
+
+// ============================================================
+// Participants
+// ============================================================
+function renderParticipants() {
+  const ps = state.participants;
+  const active = ps.filter(p => p.active !== false);
+
+  let tableRows = '';
+  if (ps.length === 0) {
+    tableRows = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-light)">${t('participants.noParticipants')}</td></tr>`;
+  } else {
+    tableRows = ps.map(p => {
+      const age = calcAge(p.dob);
+      const group = state.groups.find(g => g.participantIds.includes(p.id));
+      const isActive = p.active !== false;
+      return `<tr class="${isActive ? '' : 'inactive'}">
+        <td>${escHtml(p.name)}</td>
+        <td>${p.dob || '-'}</td>
+        <td>${age}</td>
+        <td>${p.weight || '-'}</td>
+        <td>${beltName(p.belt)}</td>
+        <td>${group ? group.name : '-'}</td>
+        <td><span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}">${isActive ? t('participants.active') : t('participants.inactive')}</span></td>
+        <td>
+          <button class="btn btn-sm ${isActive ? 'btn-outline' : 'btn-success'}" onclick="toggleParticipant('${p.id}')">
+            ${isActive ? t('participants.deactivate') : t('participants.activate')}
+          </button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  return `
+    <div class="card">
+      <h2>${t('participants.import')}</h2>
+      <p style="margin-bottom:8px;font-size:0.85rem;color:var(--text-light)">${t('participants.importHint')}</p>
+      <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="importExcel(this)" />
+    </div>
+    <div class="card">
+      <h2>${t('participants.addManual')}</h2>
+      <div class="form-row">
+        <div class="form-group"><label>${t('participants.name')}</label><input id="pName" placeholder="${t('participants.name')}" /></div>
+        <div class="form-group"><label>${t('participants.dob')}</label><input id="pDob" type="date" /></div>
+        <div class="form-group"><label>${t('participants.weight')}</label><input id="pWeight" type="number" step="0.1" min="10" max="150" placeholder="kg" style="width:80px" /></div>
+        <div class="form-group"><label>${t('participants.belt')}</label>
+          <select id="pBelt">${BELTS.map(b => `<option value="${b.id}">${beltName(b.id)}</option>`).join('')}</select>
+        </div>
+        <button class="btn btn-primary" onclick="addParticipant()">${t('participants.add')}</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin-bottom:0">${t('dashboard.totalParticipants')}: ${active.length} ${t('participants.of')} ${ps.length}</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="exportParticipantsExcel()">${t('participants.exportExcel')}</button>
+          <button class="btn btn-primary" onclick="sortGroups()">${t('participants.resortGroups')}</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <tr><th>${t('participants.name')}</th><th>${t('participants.dob')}</th><th>${t('participants.age')}</th><th>${t('participants.weight')}</th><th>${t('participants.belt')}</th><th>${t('participants.group')}</th><th>${t('participants.status')}</th><th>${t('participants.actions')}</th></tr>
+          ${tableRows}
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s || '';
+  return div.innerHTML;
+}
+
+function addParticipant() {
+  const name = document.getElementById('pName').value.trim();
+  const dob = document.getElementById('pDob').value;
+  const weight = parseFloat(document.getElementById('pWeight').value) || 0;
+  const belt = document.getElementById('pBelt').value;
+  if (!name) return;
+  state.participants.push({ id: generateId(), name, dob, weight, belt, active: true });
+  saveState();
+  render();
+}
+
+function toggleParticipant(id) {
+  const p = state.participants.find(x => x.id === id);
+  if (p) { p.active = p.active === false ? true : false; saveState(); render(); }
+}
+
+function importExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    let imported = 0;
+    for (const row of rows) {
+      const name = (row.Name || row.name || row.NAME || '').toString().trim();
+      if (!name) continue;
+      let dob = row.DOB || row.dob || row.Geburtsdatum || row.geburtsdatum || row['Date of Birth'] || '';
+      if (dob instanceof Date) dob = dob.toISOString().split('T')[0];
+      else if (typeof dob === 'number') { dob = excelDateToISO(dob); }
+      else { dob = parseDateStr(dob.toString()); }
+      const weight = parseFloat(row.Weight || row.weight || row.Gewicht || row.gewicht || 0) || 0;
+      let belt = (row.Belt || row.belt || row['G\u00fcrtel'] || row.guertel || row.Gürtel || 'white').toString().trim().toLowerCase();
+      belt = matchBelt(belt);
+      state.participants.push({ id: generateId(), name, dob, weight, belt, active: true });
+      imported++;
+    }
+    saveState();
+    render();
+    alert((lang === 'de' ? 'Importiert: ' : 'Imported: ') + imported + (lang === 'de' ? ' Teilnehmer' : ' participants'));
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function excelDateToISO(serial) {
+  const d = new Date((serial - 25569) * 86400 * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+function parseDateStr(s) {
+  // Try common formats
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const parts = s.split(/[.\/\-]/);
+  if (parts.length === 3) {
+    if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+  }
+  return s;
+}
+
+function matchBelt(raw) {
+  const map = {
+    'white': 'white', 'weiss': 'white', 'weiß': 'white',
+    'white-yellow': 'whiteYellow', 'weiss-gelb': 'whiteYellow', 'weiß-gelb': 'whiteYellow',
+    'yellow': 'yellow', 'gelb': 'yellow',
+    'yellow-green': 'yellowGreen', 'gelb-grün': 'yellowGreen', 'gelb-gruen': 'yellowGreen',
+    'green': 'green', 'grün': 'green', 'gruen': 'green',
+    'green-blue': 'greenBlue', 'grün-blau': 'greenBlue', 'gruen-blau': 'greenBlue',
+    'blue': 'blue', 'blau': 'blue',
+    'blue-red': 'blueRed', 'blau-rot': 'blueRed',
+    'red': 'red', 'rot': 'red',
+    'red-black': 'redBlack', 'rot-schwarz': 'redBlack',
+    'black': 'black', 'schwarz': 'black'
+  };
+  return map[raw] || 'white';
+}
+
+function exportParticipantsExcel() {
+  const data = state.participants.map(p => ({
+    Name: p.name, DOB: p.dob, Age: calcAge(p.dob), 'Weight (kg)': p.weight,
+    Belt: beltName(p.belt), Group: state.groups.find(g => g.participantIds.includes(p.id))?.name || '',
+    Status: p.active !== false ? 'Active' : 'Inactive'
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Participants');
+  XLSX.writeFile(wb, 'tkd_participants.xlsx');
+}
+
+// ============================================================
+// Group Sorting
+// ============================================================
+function sortGroups() {
+  const active = state.participants.filter(p => p.active !== false);
+  if (active.length === 0) { state.groups = []; saveState(); render(); return; }
+
+  // Sort: age ASC, belt index ASC, weight ASC
+  active.sort((a, b) => {
+    const ageDiff = calcAge(a.dob) - calcAge(b.dob);
+    if (ageDiff !== 0) return ageDiff;
+    const beltDiff = beltIndex(a.belt) - beltIndex(b.belt);
+    if (beltDiff !== 0) return beltDiff;
+    return (a.weight || 0) - (b.weight || 0);
+  });
+
+  // Calculate group count: prefer groups of 4, allow 3
+  let numGroups = Math.ceil(active.length / 4);
+  if (numGroups < 1) numGroups = 1;
+  // Make sure no group has fewer than 3
+  while (numGroups > 1 && Math.floor(active.length / numGroups) < 3) numGroups--;
+
+  // Snake distribution for balanced groups
+  const groups = Array.from({ length: numGroups }, (_, i) => ({
+    id: 'g' + (i + 1),
+    name: (t('groups.groupName') || 'Group') + ' ' + (i + 1),
+    participantIds: []
+  }));
+
+  active.forEach((p, i) => {
+    const row = Math.floor(i / numGroups);
+    const col = row % 2 === 0 ? (i % numGroups) : (numGroups - 1 - (i % numGroups));
+    groups[col].participantIds.push(p.id);
+  });
+
+  state.groups = groups;
+  // Clear group assignment for inactive
+  saveState();
+  render();
+}
+
+// ============================================================
+// Themed Group Names
+// ============================================================
+const THEME_NAMES = {
+  animals: { en: 'Animals', de: 'Tiere', names: ['Tigers', 'Dragons', 'Eagles', 'Wolves', 'Panthers', 'Falcons', 'Lions', 'Cobras', 'Hawks', 'Bears', 'Jaguars', 'Phoenixes', 'Vipers'] },
+  planets: { en: 'Planets', de: 'Planeten', names: ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Neptune', 'Orion', 'Pluto', 'Andromeda', 'Sirius', 'Nova', 'Cosmos', 'Nebula'] },
+  warriors: { en: 'Warriors', de: 'Krieger', names: ['Hwarang', 'Samurai', 'Spartans', 'Ninjas', 'Gladiators', 'Berserkers', 'Ronin', 'Centurions', 'Titans', 'Valkyries', 'Shogun', 'Templar', 'Viking'] },
+  mythology: { en: 'Mythology', de: 'Mythologie', names: ['Thor', 'Athena', 'Apollo', 'Freya', 'Hercules', 'Artemis', 'Odin', 'Hera', 'Ares', 'Poseidon', 'Zeus', 'Loki', 'Helios'] },
+  elements: { en: 'Elements', de: 'Elemente', names: ['Fire', 'Storm', 'Thunder', 'Lightning', 'Blizzard', 'Inferno', 'Tsunami', 'Tornado', 'Avalanche', 'Cyclone', 'Ember', 'Frost', 'Tempest'] },
+  colors: { en: 'Colors', de: 'Farben', names: ['Crimson', 'Azure', 'Emerald', 'Golden', 'Silver', 'Onyx', 'Scarlet', 'Sapphire', 'Jade', 'Amber', 'Ruby', 'Ivory', 'Obsidian'] },
+  mountains: { en: 'Mountains', de: 'Berge', names: ['Everest', 'Fuji', 'Olympus', 'Kilimanjaro', 'Matterhorn', 'Denali', 'Elbrus', 'Annapurna', 'K2', 'Rainier', 'Montblanc', 'Eiger', 'Jungfrau'] },
+  ocean: { en: 'Ocean', de: 'Ozean', names: ['Tsunami', 'Coral', 'Trident', 'Kraken', 'Poseidon', 'Leviathan', 'Marlin', 'Nautilus', 'Riptide', 'Dolphin', 'Barracuda', 'Reef', 'Maelstrom'] },
+  space: { en: 'Space', de: 'Weltraum', names: ['Comet', 'Galaxy', 'Pulsar', 'Quasar', 'Asteroid', 'Meteor', 'Supernova', 'Stardust', 'Eclipse', 'Aurora', 'Vortex', 'Zenith', 'Orbit'] },
+  martial_arts: { en: 'Martial Arts', de: 'Kampfkunst', names: ['Taeguk', 'Koryo', 'Cheonkwon', 'Hansoo', 'Sipjin', 'Jitae', 'Ilyo', 'Keumgang', 'Taebaek', 'Pyongwon', 'Bonguk', 'Haedong', 'Kumsan'] },
+  legends: { en: 'Legends', de: 'Legenden', names: ['Phoenix', 'Griffin', 'Pegasus', 'Hydra', 'Chimera', 'Cerberus', 'Sphinx', 'Minotaur', 'Basilisk', 'Wyvern', 'Thunderbird', 'Leviathan', 'Behemoth'] },
+  gems: { en: 'Gems', de: 'Edelsteine', names: ['Diamond', 'Topaz', 'Amethyst', 'Opal', 'Garnet', 'Quartz', 'Zircon', 'Beryl', 'Onyx', 'Jasper', 'Tourmaline', 'Peridot', 'Citrine'] },
+  superheroes: { en: 'Superheroes', de: 'Superhelden', names: ['Avengers', 'Defenders', 'Guardians', 'Sentinels', 'Champions', 'Vanguard', 'Protectors', 'Alliance', 'Legion', 'Crusaders', 'Enforcers', 'Paragons', 'Wardens'] }
+};
+
+function getThemeNames(themeInput) {
+  const input = themeInput.toLowerCase().trim();
+  // Direct match
+  if (THEME_NAMES[input]) return THEME_NAMES[input].names;
+  // Fuzzy match: check en/de labels and keys
+  for (const [key, theme] of Object.entries(THEME_NAMES)) {
+    if (theme.en.toLowerCase().includes(input) || theme.de.toLowerCase().includes(input) || key.includes(input)) {
+      return theme.names;
+    }
+  }
+  // Keyword matching
+  const keywords = {
+    animals: ['animal', 'tier', 'beast', 'creature', 'wildlife', 'zoo'],
+    planets: ['planet', 'solar', 'astro', 'star', 'celestial'],
+    warriors: ['warrior', 'fighter', 'soldier', 'krieger', 'kämpfer', 'battle', 'combat'],
+    mythology: ['myth', 'god', 'goddess', 'olymp', 'norse', 'greek', 'gott', 'götter'],
+    elements: ['element', 'weather', 'storm', 'wetter', 'natur', 'force'],
+    colors: ['color', 'colour', 'farbe', 'shade', 'hue'],
+    mountains: ['mountain', 'berg', 'peak', 'gipfel', 'summit', 'alpine', 'alpen'],
+    ocean: ['ocean', 'sea', 'meer', 'ozean', 'water', 'wasser', 'marine', 'aqua'],
+    space: ['space', 'weltraum', 'cosmic', 'stellar', 'galaxy', 'galax'],
+    martial_arts: ['martial', 'taekwondo', 'tkd', 'karate', 'poomsae', 'kampfkunst', 'korean'],
+    legends: ['legend', 'mythical', 'creature', 'fantasy', 'fabel', 'drache', 'dragon'],
+    gems: ['gem', 'jewel', 'stone', 'crystal', 'stein', 'kristall', 'edelstein', 'mineral'],
+    superheroes: ['hero', 'super', 'held', 'power', 'kraft', 'avenger', 'comic']
+  };
+  for (const [key, words] of Object.entries(keywords)) {
+    if (words.some(w => input.includes(w))) return THEME_NAMES[key].names;
+  }
+  // Fallback: pick a random theme
+  const keys = Object.keys(THEME_NAMES);
+  return THEME_NAMES[keys[Math.floor(Math.random() * keys.length)]].names;
+}
+
+function applyThemeNames(theme) {
+  if (!theme || state.groups.length === 0) return;
+  const names = getThemeNames(theme);
+  // Shuffle names to add variety
+  const shuffled = [...names].sort(() => Math.random() - 0.5);
+  state.groups.forEach((g, i) => {
+    g.name = shuffled[i % shuffled.length];
+  });
+  state.groupTheme = theme;
+  saveState();
+  render();
+}
+
+function resetGroupNames() {
+  state.groups.forEach((g, i) => {
+    g.name = (t('groups.groupName') || 'Group') + ' ' + (i + 1);
+  });
+  state.groupTheme = '';
+  saveState();
+  render();
+}
+
+// ============================================================
+// Groups Display
+// ============================================================
+function renderGroups() {
+  if (state.groups.length === 0) {
+    return `<div class="card"><p>${t('groups.noGroups')}</p>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="sortGroups()">${t('groups.resort')}</button></div>`;
+  }
+
+  const cards = state.groups.map(g => {
+    const members = g.participantIds
+      .map(id => state.participants.find(p => p.id === id))
+      .filter(Boolean);
+    const ages = members.map(m => calcAge(m.dob));
+    const minAge = Math.min(...ages);
+    const maxAge = Math.max(...ages);
+
+    return `<div class="group-card">
+      <div class="group-header">${escHtml(g.name)} (${members.length} ${t('groups.members')})</div>
+      <div class="group-body">
+        <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:8px">${t('groups.ageRange')}: ${minAge}-${maxAge}</div>
+        ${members.map(m => `<div class="member">
+          <span>${escHtml(m.name)}</span>
+          <span style="color:var(--text-light);font-size:0.8rem">${calcAge(m.dob)}y / ${m.weight}kg / ${beltName(m.belt)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  const presetBtns = Object.entries(THEME_NAMES).map(([key, theme]) =>
+    `<button class="btn btn-sm btn-outline" onclick="document.getElementById('themeInput').value='${key}';applyThemeNames('${key}')" style="font-size:0.75rem">${lang === 'de' ? theme.de : theme.en}</button>`
+  ).join('');
+
+  return `
+    <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap" class="no-print">
+      <button class="btn btn-primary" onclick="sortGroups()">${t('groups.resort')}</button>
+    </div>
+    <div class="card no-print">
+      <h2>${t('groups.theme')}</h2>
+      <p style="margin-bottom:10px;font-size:0.85rem;color:var(--text-light)">${t('groups.themeHint')}</p>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group" style="flex:1;min-width:200px">
+          <input id="themeInput" placeholder="${t('groups.themePlaceholder')}" value="${escHtml(state.groupTheme || '')}" style="width:100%" />
+        </div>
+        <button class="btn btn-primary" onclick="applyThemeNames(document.getElementById('themeInput').value)">${t('groups.generateNames')}</button>
+        <button class="btn btn-outline" onclick="resetGroupNames()">${t('groups.resetNames')}</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span style="font-size:0.8rem;color:var(--text-light);align-self:center;margin-right:4px">${t('groups.presets')}:</span>
+        ${presetBtns}
+      </div>
+    </div>
+    <div class="group-grid">${cards}</div>
+  `;
+}
+
+// ============================================================
+// Scoring
+// ============================================================
+function renderScoring() {
+  if (state.groups.length === 0) {
+    return `<div class="card"><p>${t('scoring.noGroup')}</p></div>`;
+  }
+
+  if (!currentGroupId || !state.groups.find(g => g.id === currentGroupId)) {
+    currentGroupId = state.groups[0].id;
+  }
+
+  const groupSelect = `<div class="form-row no-print">
+    <div class="form-group"><label>${t('scoring.selectGroup')}</label>
+      <select class="group-selector" onchange="currentGroupId=this.value;render()">
+        ${state.groups.map(g => `<option value="${g.id}" ${g.id === currentGroupId ? 'selected' : ''}>${g.name}</option>`).join('')}
+      </select>
+    </div>
+  </div>`;
+
+  const discTabs = `<div class="discipline-tabs no-print">
+    ${DISCIPLINES.map(d => `<button class="${currentDiscipline === d ? 'active' : ''}" onclick="currentDiscipline='${d}';render()">${t('scoring.' + d)}</button>`).join('')}
+  </div>`;
+
+  let content = '';
+  switch (currentDiscipline) {
+    case 'reaction': content = renderReactionScoring(); break;
+    case 'strength': content = renderStrengthScoring(); break;
+    case 'speedKicking': content = renderSpeedKickingScoring(); break;
+    case 'form': content = renderFormScoring(); break;
+    case 'kyorugi': content = renderKyorugiScoring(); break;
+  }
+
+  return groupSelect + discTabs + `<div class="card">${content}</div>`;
+}
+
+function getGroupParticipants(groupId) {
+  const g = state.groups.find(x => x.id === groupId);
+  if (!g) return [];
+  return g.participantIds.map(id => state.participants.find(p => p.id === id)).filter(Boolean);
+}
+
+function renderReactionScoring() {
+  const ps = getGroupParticipants(currentGroupId);
+  const rankings = rankReaction(currentGroupId);
+
+  let rows = ps.map(p => {
+    const r = state.results.reaction[p.id] || {};
+    const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r1 ?? ''}" onchange="saveReaction('${p.id}','r1',this.value)" /></td>
+      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r2 ?? ''}" onchange="saveReaction('${p.id}','r2',this.value)" /></td>
+      <td><input class="score-input" type="number" step="0.01" min="0" value="${r.r3 ?? ''}" onchange="saveReaction('${p.id}','r3',this.value)" /></td>
+      <td class="score-total">${r.total != null ? r.total.toFixed(2) : '-'} ${t('scoring.seconds')}</td>
+      <td><span class="rank-badge rank-${rank}">${rank}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>${t('scoring.reaction')} <span style="font-weight:normal;font-size:0.85rem;color:var(--text-light)">${t('scoring.lowerBetter')}</span></h2>
+      <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('reaction')">${t('scoring.print')}</button>
+    </div>
+    <table>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th></tr>
+      ${rows}
+    </table>
+  `;
+}
+
+function saveReaction(pId, field, val) {
+  if (!state.results.reaction[pId]) state.results.reaction[pId] = {};
+  const r = state.results.reaction[pId];
+  r[field] = val === '' ? null : parseFloat(val);
+  if (r.r1 != null && r.r2 != null && r.r3 != null) {
+    r.total = r.r1 + r.r2 + r.r3;
+  } else { r.total = null; }
+  saveState();
+  // Re-render rank column
+  render();
+}
+
+function rankReaction(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const scored = ps.filter(p => state.results.reaction[p.id]?.total != null)
+    .map(p => ({ id: p.id, total: state.results.reaction[p.id].total }));
+  scored.sort((a, b) => a.total - b.total); // lower is better
+  return assignRanks(scored);
+}
+
+function renderStrengthScoring() {
+  const ps = getGroupParticipants(currentGroupId);
+  const rankings = rankStrength(currentGroupId);
+
+  let rows = ps.map(p => {
+    const r = state.results.strength[p.id] || {};
+    const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td><input class="score-input" type="number" min="0" value="${r.r1 ?? ''}" onchange="saveStrength('${p.id}','r1',this.value)" /></td>
+      <td><input class="score-input" type="number" min="0" value="${r.r2 ?? ''}" onchange="saveStrength('${p.id}','r2',this.value)" /></td>
+      <td><input class="score-input" type="number" min="0" value="${r.r3 ?? ''}" onchange="saveStrength('${p.id}','r3',this.value)" /></td>
+      <td class="score-total">${r.total != null ? r.total : '-'} ${t('scoring.boards')}</td>
+      <td><span class="rank-badge rank-${rank}">${rank}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>${t('scoring.strength')} <span style="font-weight:normal;font-size:0.85rem;color:var(--text-light)">${t('scoring.higherBetter')}</span></h2>
+      <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('strength')">${t('scoring.print')}</button>
+    </div>
+    <table>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th></tr>
+      ${rows}
+    </table>
+  `;
+}
+
+function saveStrength(pId, field, val) {
+  if (!state.results.strength[pId]) state.results.strength[pId] = {};
+  const r = state.results.strength[pId];
+  r[field] = val === '' ? null : parseInt(val);
+  if (r.r1 != null && r.r2 != null && r.r3 != null) {
+    r.total = r.r1 + r.r2 + r.r3;
+  } else { r.total = null; }
+  saveState();
+  render();
+}
+
+function rankStrength(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const scored = ps.filter(p => state.results.strength[p.id]?.total != null)
+    .map(p => ({ id: p.id, total: state.results.strength[p.id].total }));
+  scored.sort((a, b) => b.total - a.total); // higher is better
+  return assignRanks(scored);
+}
+
+function renderSpeedKickingScoring() {
+  const ps = getGroupParticipants(currentGroupId);
+  const rankings = rankSpeedKicking(currentGroupId);
+
+  let rows = ps.map(p => {
+    const r = state.results.speedKicking[p.id] || {};
+    const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td><input class="score-input" type="number" min="0" value="${r.count ?? ''}" onchange="saveSpeedKicking('${p.id}',this.value)" style="width:120px" /></td>
+      <td><span class="rank-badge rank-${rank}">${rank}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>${t('scoring.speedKicking')} <span style="font-weight:normal;font-size:0.85rem;color:var(--text-light)">${t('scoring.higherBetter')}</span></h2>
+      <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('speedKicking')">${t('scoring.print')}</button>
+    </div>
+    <table>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.count')} (${t('scoring.kicks')})</th><th>${t('scoring.rank')}</th></tr>
+      ${rows}
+    </table>
+  `;
+}
+
+function saveSpeedKicking(pId, val) {
+  if (!state.results.speedKicking[pId]) state.results.speedKicking[pId] = {};
+  state.results.speedKicking[pId].count = val === '' ? null : parseInt(val);
+  saveState();
+  render();
+}
+
+function rankSpeedKicking(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const scored = ps.filter(p => state.results.speedKicking[p.id]?.count != null)
+    .map(p => ({ id: p.id, total: state.results.speedKicking[p.id].count }));
+  scored.sort((a, b) => b.total - a.total);
+  return assignRanks(scored);
+}
+
+function renderFormScoring() {
+  const ps = getGroupParticipants(currentGroupId);
+  const rankings = rankForm(currentGroupId);
+  const fs = state.settings.formScoring;
+
+  let rows = ps.map(p => {
+    const r = state.results.form[p.id] || {};
+    const rank = rankings.find(x => x.id === p.id)?.rank || '-';
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td>
+        <select onchange="saveForm('${p.id}','formType',this.value)" style="min-width:130px">
+          <option value="">--</option>
+          <option value="free" ${r.formType === 'free' ? 'selected' : ''}>${t('scoring.freeForm')}</option>
+          <option value="poomsae1-3" ${r.formType === 'poomsae1-3' ? 'selected' : ''}>${t('scoring.poomsae13')}</option>
+          <option value="poomsae4-8" ${r.formType === 'poomsae4-8' ? 'selected' : ''}>${t('scoring.poomsae48')}</option>
+        </select>
+      </td>
+      <td>
+        <select onchange="saveForm('${p.id}','rating',this.value)">
+          <option value="">--</option>
+          <option value="ok" ${r.rating === 'ok' ? 'selected' : ''}>${t('scoring.ok')}</option>
+          <option value="good" ${r.rating === 'good' ? 'selected' : ''}>${t('scoring.good')}</option>
+          <option value="outstanding" ${r.rating === 'outstanding' ? 'selected' : ''}>${t('scoring.outstanding')}</option>
+        </select>
+      </td>
+      <td class="score-total">${r.points != null ? r.points : '-'} ${t('scoring.points')}</td>
+      <td><span class="rank-badge rank-${rank}">${rank}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2>${t('scoring.form')} <span style="font-weight:normal;font-size:0.85rem;color:var(--text-light)">${t('scoring.higherBetter')}</span></h2>
+      <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('form')">${t('scoring.print')}</button>
+    </div>
+    <table>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.formType')}</th><th>${t('scoring.rating')}</th><th>${t('scoring.points')}</th><th>${t('scoring.rank')}</th></tr>
+      ${rows}
+    </table>
+  `;
+}
+
+function saveForm(pId, field, val) {
+  if (!state.results.form[pId]) state.results.form[pId] = {};
+  const r = state.results.form[pId];
+  r[field] = val || null;
+  // Calculate points
+  if (r.formType && r.rating) {
+    const fs = state.settings.formScoring[r.formType];
+    r.points = fs ? (fs[r.rating] || 0) : 0;
+  } else { r.points = null; }
+  saveState();
+  render();
+}
+
+function rankForm(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const scored = ps.filter(p => state.results.form[p.id]?.points != null)
+    .map(p => ({ id: p.id, total: state.results.form[p.id].points }));
+  scored.sort((a, b) => b.total - a.total);
+  return assignRanks(scored);
+}
+
+function renderKyorugiScoring() {
+  const ps = getGroupParticipants(currentGroupId);
+  if (ps.length === 0) return `<p>${t('scoring.noGroup')}</p>`;
+
+  // Check if all are young (6-7) or older
+  const allYoung = ps.every(p => calcAge(p.dob) <= 7);
+  const allOld = ps.every(p => calcAge(p.dob) >= 8);
+  const mixed = !allYoung && !allOld;
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h2>${t('scoring.kyorugi')}</h2>
+    <button class="btn btn-outline btn-sm no-print" onclick="printScoreSheet('kyorugi')">${t('scoring.print')}</button>
+  </div>`;
+
+  if (allYoung) {
+    html += renderKyorugiSimple(ps);
+  } else if (allOld) {
+    html += renderKyorugiMatches(ps);
+  } else {
+    // Mixed: separate by age
+    const young = ps.filter(p => calcAge(p.dob) <= 7);
+    const old = ps.filter(p => calcAge(p.dob) >= 8);
+    if (young.length > 0) {
+      html += `<h3 style="margin:12px 0 8px">${t('scoring.simplePoints')}</h3>`;
+      html += renderKyorugiSimple(young);
+    }
+    if (old.length > 0) {
+      html += `<h3 style="margin:16px 0 8px">${t('scoring.matchResult')}</h3>`;
+      html += renderKyorugiMatches(old);
+    }
+  }
+
+  // Show rankings
+  const rankings = rankKyorugi(currentGroupId);
+  if (rankings.length > 0) {
+    html += `<h3 style="margin:16px 0 8px">${t('scoring.rank')}</h3><table>
+      <tr><th>${t('scoring.participant')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th></tr>
+      ${rankings.map(r => {
+        const p = state.participants.find(x => x.id === r.id);
+        return `<tr><td>${escHtml(p?.name)}</td><td>${r.total}</td><td><span class="rank-badge rank-${r.rank}">${r.rank}</span></td></tr>`;
+      }).join('')}
+    </table>`;
+  }
+
+  return html;
+}
+
+function renderKyorugiSimple(ps) {
+  let rows = ps.map(p => {
+    const r = state.results.kyorugi[p.id] || {};
+    return `<tr>
+      <td>${escHtml(p.name)}</td>
+      <td><input class="score-input" type="number" min="0" value="${r.totalPoints ?? ''}" onchange="saveKyorugiSimple('${p.id}',this.value)" style="width:120px" /></td>
+    </tr>`;
+  }).join('');
+  return `<table><tr><th>${t('scoring.participant')}</th><th>${t('scoring.points')}</th></tr>${rows}</table>`;
+}
+
+function saveKyorugiSimple(pId, val) {
+  if (!state.results.kyorugi[pId]) state.results.kyorugi[pId] = {};
+  state.results.kyorugi[pId].totalPoints = val === '' ? null : parseInt(val);
+  state.results.kyorugi[pId].matches = [];
+  saveState();
+  render();
+}
+
+function renderKyorugiMatches(ps) {
+  // Generate all pair combinations
+  const pairs = [];
+  for (let i = 0; i < ps.length; i++) {
+    for (let j = i + 1; j < ps.length; j++) {
+      pairs.push([ps[i], ps[j]]);
+    }
+  }
+
+  let html = pairs.map(([a, b]) => {
+    const matchKey = a.id + '_' + b.id;
+    const existingA = getMatchResult(a.id, b.id);
+    const existingB = getMatchResult(b.id, a.id);
+    return `<div class="kyorugi-match">
+      <div class="fighter">
+        <strong>${escHtml(a.name)}</strong><br/>
+        <label style="font-size:0.8rem">${t('scoring.won')}: <select onchange="saveKyorugiMatch('${a.id}','${b.id}',this.value,null,null)">
+          <option value="">--</option>
+          <option value="yes" ${existingA?.won === true ? 'selected' : ''}>${lang === 'de' ? 'Ja' : 'Yes'}</option>
+          <option value="no" ${existingA?.won === false ? 'selected' : ''}>${lang === 'de' ? 'Nein' : 'No'}</option>
+        </select></label>
+        <label style="font-size:0.8rem">${t('scoring.pointsFor')}: <input class="score-input" type="number" min="0" value="${existingA?.pointsFor ?? ''}" onchange="saveKyorugiMatchPts('${a.id}','${b.id}','pointsFor',this.value)" /></label>
+      </div>
+      <div class="vs">${t('scoring.vs')}</div>
+      <div class="fighter">
+        <strong>${escHtml(b.name)}</strong><br/>
+        <label style="font-size:0.8rem">${t('scoring.won')}: <select onchange="saveKyorugiMatch('${b.id}','${a.id}',this.value,null,null)">
+          <option value="">--</option>
+          <option value="yes" ${existingB?.won === true ? 'selected' : ''}>${lang === 'de' ? 'Ja' : 'Yes'}</option>
+          <option value="no" ${existingB?.won === false ? 'selected' : ''}>${lang === 'de' ? 'Nein' : 'No'}</option>
+        </select></label>
+        <label style="font-size:0.8rem">${t('scoring.pointsFor')}: <input class="score-input" type="number" min="0" value="${existingB?.pointsFor ?? ''}" onchange="saveKyorugiMatchPts('${b.id}','${a.id}','pointsFor',this.value)" /></label>
+      </div>
+    </div>`;
+  }).join('');
+
+  return html;
+}
+
+function getMatchResult(pId, oppId) {
+  const r = state.results.kyorugi[pId];
+  if (!r?.matches) return null;
+  return r.matches.find(m => m.opponentId === oppId);
+}
+
+function saveKyorugiMatch(pId, oppId, wonVal, ptsFor, ptsAgainst) {
+  if (!state.results.kyorugi[pId]) state.results.kyorugi[pId] = { matches: [] };
+  if (!state.results.kyorugi[pId].matches) state.results.kyorugi[pId].matches = [];
+  let match = state.results.kyorugi[pId].matches.find(m => m.opponentId === oppId);
+  if (!match) {
+    match = { opponentId: oppId, won: null, pointsFor: null, pointsAgainst: null };
+    state.results.kyorugi[pId].matches.push(match);
+  }
+  if (wonVal !== null) match.won = wonVal === 'yes' ? true : wonVal === 'no' ? false : null;
+  if (ptsFor !== null) match.pointsFor = ptsFor === '' ? null : parseInt(ptsFor);
+  if (ptsAgainst !== null) match.pointsAgainst = ptsAgainst === '' ? null : parseInt(ptsAgainst);
+
+  // Auto-sync opponent: if A won, B lost
+  if (wonVal !== null) {
+    if (!state.results.kyorugi[oppId]) state.results.kyorugi[oppId] = { matches: [] };
+    if (!state.results.kyorugi[oppId].matches) state.results.kyorugi[oppId].matches = [];
+    let oppMatch = state.results.kyorugi[oppId].matches.find(m => m.opponentId === pId);
+    if (!oppMatch) {
+      oppMatch = { opponentId: pId, won: null, pointsFor: null, pointsAgainst: null };
+      state.results.kyorugi[oppId].matches.push(oppMatch);
+    }
+    if (match.won === true) oppMatch.won = false;
+    else if (match.won === false) oppMatch.won = true;
+    else oppMatch.won = null;
+  }
+
+  saveState();
+  render();
+}
+
+function saveKyorugiMatchPts(pId, oppId, field, val) {
+  if (!state.results.kyorugi[pId]) state.results.kyorugi[pId] = { matches: [] };
+  if (!state.results.kyorugi[pId].matches) state.results.kyorugi[pId].matches = [];
+  let match = state.results.kyorugi[pId].matches.find(m => m.opponentId === oppId);
+  if (!match) {
+    match = { opponentId: oppId, won: null, pointsFor: null, pointsAgainst: null };
+    state.results.kyorugi[pId].matches.push(match);
+  }
+  match[field] = val === '' ? null : parseInt(val);
+
+  // Sync opponent's pointsAgainst/pointsFor
+  if (!state.results.kyorugi[oppId]) state.results.kyorugi[oppId] = { matches: [] };
+  if (!state.results.kyorugi[oppId].matches) state.results.kyorugi[oppId].matches = [];
+  let oppMatch = state.results.kyorugi[oppId].matches.find(m => m.opponentId === pId);
+  if (!oppMatch) {
+    oppMatch = { opponentId: pId, won: null, pointsFor: null, pointsAgainst: null };
+    state.results.kyorugi[oppId].matches.push(oppMatch);
+  }
+  if (field === 'pointsFor') oppMatch.pointsAgainst = match.pointsFor;
+  if (field === 'pointsAgainst') oppMatch.pointsFor = match.pointsAgainst;
+
+  saveState();
+  render();
+}
+
+function rankKyorugi(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const scored = [];
+  for (const p of ps) {
+    const r = state.results.kyorugi[p.id];
+    const age = calcAge(p.dob);
+    if (age <= 7) {
+      if (r?.totalPoints != null) {
+        scored.push({ id: p.id, wins: 0, diff: 0, total: r.totalPoints, isSimple: true });
+      }
+    } else {
+      if (r?.matches && r.matches.length > 0) {
+        const wins = r.matches.filter(m => m.won === true).length;
+        const ptsFor = r.matches.reduce((s, m) => s + (m.pointsFor || 0), 0);
+        const ptsAgainst = r.matches.reduce((s, m) => s + (m.pointsAgainst || 0), 0);
+        scored.push({ id: p.id, wins, diff: ptsFor - ptsAgainst, total: wins * 1000 + (ptsFor - ptsAgainst + 500), isSimple: false });
+      }
+    }
+  }
+
+  // Sort: simple by points desc, match-based by wins desc then diff desc
+  scored.sort((a, b) => {
+    if (a.isSimple !== b.isSimple) return a.isSimple ? 1 : -1;
+    if (a.isSimple) return b.total - a.total;
+    if (a.wins !== b.wins) return b.wins - a.wins;
+    return b.diff - a.diff;
+  });
+
+  return assignRanks(scored);
+}
+
+// ============================================================
+// Rank helper
+// ============================================================
+function assignRanks(sorted) {
+  sorted.forEach((item, i) => {
+    item.rank = i + 1;
+  });
+  return sorted;
+}
+
+// ============================================================
+// Rankings
+// ============================================================
+function renderRankings() {
+  if (state.groups.length === 0) {
+    return `<div class="card"><p>${t('rankings.noData')}</p></div>`;
+  }
+
+  let html = `<h2 style="margin-bottom:16px">${t('rankings.overallRanking')}</h2>`;
+
+  for (const group of state.groups) {
+    const ps = getGroupParticipants(group.id);
+    const overallRankings = calcOverallRankings(group.id);
+
+    let rows = overallRankings.map(r => {
+      const p = state.participants.find(x => x.id === r.id);
+      return `<tr>
+        <td><span class="rank-badge rank-${r.rank}">${r.rank}</span></td>
+        <td>${escHtml(p?.name)}</td>
+        <td style="font-size:0.8rem">${r.reactionScore ?? '-'} (${r.reactionRank ?? '-'})</td>
+        <td style="font-size:0.8rem">${r.strengthScore ?? '-'} (${r.strengthRank ?? '-'})</td>
+        <td style="font-size:0.8rem">${r.speedKickingScore ?? '-'} (${r.speedKickingRank ?? '-'})</td>
+        <td style="font-size:0.8rem">${r.formScore ?? '-'} (${r.formRank ?? '-'})</td>
+        <td style="font-size:0.8rem">${r.kyorugiInfo ?? '-'} (${r.kyorugiRank ?? '-'})</td>
+        <td class="score-total">${r.totalPoints} ${t('rankings.pts')}</td>
+      </tr>`;
+    }).join('');
+
+    html += `<div class="card">
+      <h3>${group.name}</h3>
+      <div style="overflow-x:auto">
+        <table>
+          <tr><th>${t('rankings.place')}</th><th>${t('rankings.participant')}</th>
+            <th>${t('rankings.reaction')}</th><th>${t('rankings.strength')}</th><th>${t('rankings.speedKicking')}</th><th>${t('rankings.form')}</th><th>${t('rankings.kyorugi')}</th>
+            <th>${t('rankings.total')}</th></tr>
+          ${rows}
+        </table>
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function calcOverallRankings(groupId) {
+  const ps = getGroupParticipants(groupId);
+  const pp = state.settings.placementPoints;
+  const reactionRanks = rankReaction(groupId);
+  const strengthRanks = rankStrength(groupId);
+  const speedKickingRanks = rankSpeedKicking(groupId);
+  const formRanks = rankForm(groupId);
+  const kyorugiRanks = rankKyorugi(groupId);
+
+  const results = ps.map(p => {
+    const rr = reactionRanks.find(x => x.id === p.id);
+    const sr = strengthRanks.find(x => x.id === p.id);
+    const skr = speedKickingRanks.find(x => x.id === p.id);
+    const fr = formRanks.find(x => x.id === p.id);
+    const kr = kyorugiRanks.find(x => x.id === p.id);
+
+    const getPoints = (rankObj) => rankObj ? (pp[rankObj.rank] || 0) : 0;
+
+    const totalPoints = getPoints(rr) + getPoints(sr) + getPoints(skr) + getPoints(fr) + getPoints(kr);
+
+    // Get display scores
+    const reactionData = state.results.reaction[p.id];
+    const strengthData = state.results.strength[p.id];
+    const speedKickingData = state.results.speedKicking[p.id];
+    const formData = state.results.form[p.id];
+    const kyorugiData = state.results.kyorugi[p.id];
+
+    let kyorugiInfo = '-';
+    if (kyorugiData) {
+      if (kyorugiData.totalPoints != null) kyorugiInfo = kyorugiData.totalPoints + 'pts';
+      else if (kyorugiData.matches?.length > 0) {
+        const wins = kyorugiData.matches.filter(m => m.won === true).length;
+        kyorugiInfo = wins + 'W';
+      }
+    }
+
+    return {
+      id: p.id,
+      reactionScore: reactionData?.total != null ? reactionData.total.toFixed(2) : null,
+      reactionRank: rr?.rank,
+      strengthScore: strengthData?.total,
+      strengthRank: sr?.rank,
+      speedKickingScore: speedKickingData?.count,
+      speedKickingRank: skr?.rank,
+      formScore: formData?.points,
+      formRank: fr?.rank,
+      kyorugiInfo,
+      kyorugiRank: kr?.rank,
+      totalPoints
+    };
+  });
+
+  results.sort((a, b) => b.totalPoints - a.totalPoints);
+  results.forEach((r, i) => { r.rank = i + 1; });
+  return results;
+}
+
+// ============================================================
+// Certificates / PDF
+// ============================================================
+function renderCertificates() {
+  return `
+    <div class="card">
+      <h2>${t('certificates.certificate')}</h2>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="generateCertificates()">${t('certificates.generate')}</button>
+        <button class="btn btn-outline" onclick="exportResultsExcel()">${t('certificates.exportResults')}</button>
+      </div>
+    </div>
+    <div id="certPreview"></div>
+  `;
+}
+
+function generateCertificates() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  let firstPage = true;
+
+  for (const group of state.groups) {
+    const rankings = calcOverallRankings(group.id);
+    for (const r of rankings) {
+      const p = state.participants.find(x => x.id === r.id);
+      if (!p || p.active === false) continue;
+      if (!firstPage) doc.addPage();
+      firstPage = false;
+      renderCertificatePage(doc, p, r, group);
+    }
+  }
+
+  doc.save('tkd_certificates.pdf');
+}
+
+function renderCertificatePage(doc, participant, ranking, group) {
+  const w = 210, h = 297;
+  const cx = w / 2;
+
+  // Border
+  doc.setDrawColor(26, 35, 126);
+  doc.setLineWidth(2);
+  doc.rect(10, 10, w - 20, h - 20);
+  doc.setLineWidth(0.5);
+  doc.rect(14, 14, w - 28, h - 28);
+
+  // Header
+  doc.setFontSize(28);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 35, 126);
+  doc.text(state.competition.name || 'TKD Youth League', cx, 40, { align: 'center' });
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  const dateStr = state.competition.date ? new Date(state.competition.date).toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-US') : '';
+  doc.text([state.competition.location, dateStr].filter(Boolean).join(' - '), cx, 50, { align: 'center' });
+
+  // Certificate title
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(229, 57, 53);
+  doc.text(t('certificates.certificate'), cx, 70, { align: 'center' });
+
+  // Participant name
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 35, 126);
+  doc.text(participant.name, cx, 90, { align: 'center' });
+
+  // Info
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  const info = `${t('participants.age')}: ${calcAge(participant.dob)} | ${t('participants.belt')}: ${beltName(participant.belt)} | ${t('participants.weight')}: ${participant.weight}kg`;
+  doc.text(info, cx, 100, { align: 'center' });
+  doc.text(`${group.name}`, cx, 108, { align: 'center' });
+
+  // Overall Place
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 35, 126);
+  const placeText = `${t('certificates.place')}: ${ranking.rank}`;
+  doc.text(placeText, cx, 125, { align: 'center' });
+
+  doc.setFontSize(12);
+  doc.setTextColor(229, 57, 53);
+  doc.text(`${ranking.totalPoints} ${t('rankings.pts')}`, cx, 133, { align: 'center' });
+
+  // Results table
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 35, 126);
+  const tableTop = 148;
+  const colX = [25, 80, 140, 170];
+
+  doc.text(t('certificates.discipline'), colX[0], tableTop);
+  doc.text(t('certificates.score'), colX[1], tableTop);
+  doc.text(t('certificates.placement'), colX[2], tableTop);
+  doc.text(t('rankings.pts'), colX[3], tableTop);
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(colX[0], tableTop + 2, 190, tableTop + 2);
+
+  const disciplines = [
+    { name: t('scoring.reaction'), score: ranking.reactionScore ? ranking.reactionScore + 's' : '-', rank: ranking.reactionRank },
+    { name: t('scoring.strength'), score: ranking.strengthScore != null ? ranking.strengthScore.toString() : '-', rank: ranking.strengthRank },
+    { name: t('scoring.speedKicking'), score: ranking.speedKickingScore != null ? ranking.speedKickingScore.toString() : '-', rank: ranking.speedKickingRank },
+    { name: t('scoring.form'), score: ranking.formScore != null ? ranking.formScore.toString() + ' pts' : '-', rank: ranking.formRank },
+    { name: t('scoring.kyorugi'), score: ranking.kyorugiInfo || '-', rank: ranking.kyorugiRank }
+  ];
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  const pp = state.settings.placementPoints;
+  disciplines.forEach((d, i) => {
+    const y = tableTop + 12 + i * 12;
+    doc.text(d.name, colX[0], y);
+    doc.text(d.score, colX[1], y);
+    doc.text(d.rank ? '#' + d.rank : '-', colX[2], y);
+    doc.text(d.rank ? (pp[d.rank] || 0).toString() : '0', colX[3], y);
+  });
+
+  // Congratulations
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(26, 35, 126);
+  doc.text(t('certificates.congratulations'), cx, 240, { align: 'center' });
+
+  // Footer
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('TKD Youth League Competition Manager', cx, 275, { align: 'center' });
+}
+
+function exportResultsExcel() {
+  const data = [];
+  for (const group of state.groups) {
+    const rankings = calcOverallRankings(group.id);
+    for (const r of rankings) {
+      const p = state.participants.find(x => x.id === r.id);
+      if (!p) continue;
+      data.push({
+        Group: group.name, Place: r.rank, Name: p.name, Age: calcAge(p.dob),
+        Belt: beltName(p.belt), Weight: p.weight,
+        'Reaction (s)': r.reactionScore || '', 'Reaction Rank': r.reactionRank || '',
+        'Strength': r.strengthScore || '', 'Strength Rank': r.strengthRank || '',
+        'Speed Kicking': r.speedKickingScore || '', 'Speed Rank': r.speedKickingRank || '',
+        'Form (pts)': r.formScore || '', 'Form Rank': r.formRank || '',
+        'Kyorugi': r.kyorugiInfo || '', 'Kyorugi Rank': r.kyorugiRank || '',
+        'Total Points': r.totalPoints
+      });
+    }
+  }
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Results');
+  XLSX.writeFile(wb, 'tkd_results.xlsx');
+}
+
+// ============================================================
+// Print Score Sheet
+// ============================================================
+function printScoreSheet(discipline) {
+  const group = state.groups.find(g => g.id === currentGroupId);
+  if (!group) return;
+  const ps = getGroupParticipants(currentGroupId);
+  const discName = t('scoring.' + discipline);
+
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${discName} - ${group.name}</title>
+    <style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left}th{background:#f0f0f0}h1{font-size:1.2rem}h2{font-size:1rem;color:#666}.write-line{border-bottom:1px solid #ccc;min-width:80px;display:inline-block;height:20px}</style></head><body>`;
+  html += `<h1>${state.competition.name || 'TKD Youth League'}</h1>`;
+  html += `<h2>${group.name} - ${discName}</h2>`;
+  html += `<table><tr><th>#</th><th>${t('scoring.participant')}</th>`;
+
+  switch (discipline) {
+    case 'reaction':
+      html += `<th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th>`;
+      break;
+    case 'strength':
+      html += `<th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th><th>${t('scoring.rank')}</th>`;
+      break;
+    case 'speedKicking':
+      html += `<th>${t('scoring.count')}</th><th>${t('scoring.rank')}</th>`;
+      break;
+    case 'form':
+      html += `<th>${t('scoring.formType')}</th><th>${t('scoring.rating')}</th><th>${t('scoring.points')}</th><th>${t('scoring.rank')}</th>`;
+      break;
+    case 'kyorugi':
+      html += `<th>${t('scoring.points')} / ${t('scoring.wins')}</th><th>${t('scoring.rank')}</th>`;
+      break;
+  }
+  html += `</tr>`;
+
+  ps.forEach((p, i) => {
+    html += `<tr><td>${i + 1}</td><td>${escHtml(p.name)}</td>`;
+    const emptyCells = discipline === 'form' ? 4 : discipline === 'speedKicking' || discipline === 'kyorugi' ? 2 : 5;
+    for (let c = 0; c < emptyCells; c++) html += `<td></td>`;
+    html += `</tr>`;
+  });
+
+  html += `</table></body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.print();
+}
+
+// ============================================================
+// Settings
+// ============================================================
+function renderSettings() {
+  const s = state.settings;
+  const c = state.competition;
+
+  let formRows = '';
+  const formTypes = [
+    { key: 'free', label: t('settings.freeForm') },
+    { key: 'poomsae1-3', label: t('settings.poomsae13') },
+    { key: 'poomsae4-8', label: t('settings.poomsae48') }
+  ];
+  const ratings = ['ok', 'good', 'outstanding'];
+
+  for (const ft of formTypes) {
+    for (const r of ratings) {
+      formRows += `<tr>
+        <td>${ft.label}</td>
+        <td>${t('settings.' + r)}</td>
+        <td><input type="number" step="0.5" min="0" class="score-input" value="${s.formScoring[ft.key]?.[r] ?? 0}" id="fs_${ft.key}_${r}" /></td>
+      </tr>`;
+    }
+  }
+
+  return `
+    <div class="card">
+      <h2>${t('settings.competitionInfo')}</h2>
+      <div class="form-row">
+        <div class="form-group"><label>${t('settings.compName')}</label><input id="sCompName" value="${escHtml(c.name)}" style="width:250px" /></div>
+        <div class="form-group"><label>${t('settings.compDate')}</label><input id="sCompDate" type="date" value="${c.date || ''}" /></div>
+        <div class="form-group"><label>${t('settings.compLocation')}</label><input id="sCompLoc" value="${escHtml(c.location)}" style="width:200px" /></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>${t('settings.placementPoints')}</h2>
+      <div class="form-row">
+        ${[1,2,3,4].map(i => `<div class="form-group"><label>${t('settings.place')} ${i}</label><input type="number" min="0" class="score-input" id="pp${i}" value="${s.placementPoints[i] ?? 0}" /></div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h2>${t('settings.formScoring')}</h2>
+      <table>
+        <tr><th>${t('settings.formType')}</th><th>${t('settings.ratingLevel')}</th><th>${t('settings.pointsValue')}</th></tr>
+        ${formRows}
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px">
+      <button class="btn btn-primary" onclick="saveSettings()">${t('settings.save')}</button>
+      <button class="btn btn-accent" onclick="resetAllData()">${t('settings.reset')}</button>
+    </div>
+  `;
+}
+
+function saveSettings() {
+  state.competition.name = document.getElementById('sCompName').value;
+  state.competition.date = document.getElementById('sCompDate').value;
+  state.competition.location = document.getElementById('sCompLoc').value;
+
+  [1,2,3,4].forEach(i => {
+    state.settings.placementPoints[i] = parseInt(document.getElementById('pp' + i).value) || 0;
+  });
+
+  const formTypes = ['free', 'poomsae1-3', 'poomsae4-8'];
+  const ratings = ['ok', 'good', 'outstanding'];
+  for (const ft of formTypes) {
+    if (!state.settings.formScoring[ft]) state.settings.formScoring[ft] = {};
+    for (const r of ratings) {
+      state.settings.formScoring[ft][r] = parseFloat(document.getElementById('fs_' + ft + '_' + r).value) || 0;
+    }
+  }
+
+  saveState();
+  alert(t('settings.saved'));
+  render();
+}
+
+function resetAllData() {
+  if (confirm(t('settings.resetConfirm'))) {
+    state = defaultState();
+    saveState();
+    render();
+  }
+}
+
+// ============================================================
+// Init
+// ============================================================
+render();
+</script>
+</body>
+</html>
