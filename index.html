@@ -733,12 +733,28 @@ function addParticipant() {
   if (!name) return;
   state.participants.push({ id: generateId(), name, dob, weight, belt, active: true });
   saveState();
-  render();
+  // Auto-redistribute if groups already exist
+  if (state.groups.length > 0) {
+    sortGroups();
+    showToast(lang === 'de' ? 'Gruppen aktualisiert' : 'Groups updated', 'info', 1500);
+  } else {
+    render();
+  }
 }
 
 function toggleParticipant(id) {
   const p = state.participants.find(x => x.id === id);
-  if (p) { p.active = p.active === false ? true : false; saveState(); render(); }
+  if (p) {
+    p.active = p.active === false ? true : false;
+    saveState();
+    // Auto-redistribute if groups already exist
+    if (state.groups.length > 0) {
+      sortGroups();
+      showToast(lang === 'de' ? 'Gruppen aktualisiert' : 'Groups updated', 'info', 1500);
+    } else {
+      render();
+    }
+  }
 }
 
 function importExcel(input) {
