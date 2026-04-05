@@ -154,7 +154,8 @@ input[type="file"] { padding: 6px; }
 .badge-inactive { background: #ffebee; color: #c62828; }
 
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-.group-card { background: var(--card); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; }
+.group-card { background: var(--card); border-radius: var(--radius); border: 2px solid var(--border); }
+.group-card .group-header { border-top-left-radius: calc(var(--radius) - 2px); border-top-right-radius: calc(var(--radius) - 2px); }
 .group-card.overfull { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.15); }
 .group-card.overfull .group-header { background: var(--accent); }
 .group-card.underfull { border-color: var(--warning); box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.15); }
@@ -183,8 +184,9 @@ input[type="file"] { padding: 6px; }
 .group-card .member:hover .move-btn { opacity: 1; }
 .group-card .member .move-btn:hover { background: var(--bg); color: var(--primary); }
 .group-card .member .move-btn svg { width: 14px; height: 14px; display: block; }
-.move-menu { position: absolute; right: 0; top: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 50; min-width: 180px; padding: 4px 0; display: none; }
+.move-menu { position: absolute; right: 0; top: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 150; min-width: 180px; padding: 4px 0; display: none; }
 .move-menu.show { display: block; }
+.move-menu.up { top: auto; bottom: 100%; }
 .move-menu button { display: block; width: 100%; background: none; border: none; text-align: left; padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--text); }
 .move-menu button:hover { background: var(--bg); color: var(--primary); }
 .move-menu .menu-label { padding: 6px 14px; font-size: 0.7rem; text-transform: uppercase; color: var(--text-light); font-weight: 600; letter-spacing: 0.5px; }
@@ -952,9 +954,17 @@ function toggleMoveMenu(participantId) {
   const menu = document.getElementById('mm-' + participantId);
   if (!menu) return;
   const wasOpen = menu.classList.contains('show');
-  // Close all other menus
   document.querySelectorAll('.move-menu.show').forEach(m => m.classList.remove('show'));
-  if (!wasOpen) menu.classList.add('show');
+  document.querySelectorAll('.move-menu.up').forEach(m => m.classList.remove('up'));
+  if (!wasOpen) {
+    menu.classList.add('show');
+    // Check if menu would overflow viewport bottom, flip up if so
+    const rect = menu.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    if (rect.bottom > viewportHeight - 10) {
+      menu.classList.add('up');
+    }
+  }
 }
 
 function resetToAutoDistribution() {
