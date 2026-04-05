@@ -155,7 +155,19 @@ input[type="file"] { padding: 6px; }
 
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .group-card { background: var(--card); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; }
-.group-card .group-header { background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 600; font-size: 0.95rem; }
+.group-card .group-header { background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.group-header .name-display { flex: 1; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; display: flex; align-items: center; gap: 8px; }
+.group-header .name-display:hover { background: rgba(255,255,255,0.15); }
+.group-header .name-display .edit-icon { opacity: 0; transition: opacity 0.15s; width: 14px; height: 14px; flex-shrink: 0; }
+.group-header .name-display:hover .edit-icon { opacity: 0.8; }
+.group-header .name-edit { flex: 1; display: flex; align-items: center; gap: 6px; }
+.group-header .name-edit input { flex: 1; min-width: 0; background: rgba(255,255,255,0.95); border: none; color: var(--text); padding: 6px 10px; border-radius: 4px; font-size: 0.9rem; font-weight: 600; }
+.group-header .name-edit input:focus { outline: 2px solid #fff; outline-offset: 1px; }
+.group-header .icon-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0; flex-shrink: 0; }
+.group-header .icon-btn:hover { background: rgba(255,255,255,0.3); }
+.group-header .icon-btn.confirm:hover { background: var(--success); }
+.group-header .icon-btn.cancel:hover { background: var(--accent); }
+.group-header .icon-btn svg { width: 16px; height: 16px; }
 .group-card .group-body { padding: 12px; }
 .group-card .member { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; display: flex; justify-content: space-between; }
 .group-card .member:last-child { border-bottom: none; }
@@ -899,6 +911,46 @@ function applyThemeNames(theme) {
   render();
 }
 
+function startEditGroupName(groupId) {
+  const g = state.groups.find(x => x.id === groupId);
+  if (!g) return;
+  const header = document.getElementById('gh-' + groupId);
+  if (!header) return;
+  const checkSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const xSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  header.innerHTML = `
+    <div class="name-edit">
+      <input type="text" id="edit-${groupId}" value="${escHtml(g.name)}" onkeydown="handleGroupNameKey(event, '${groupId}')" />
+      <button class="icon-btn confirm" onclick="saveGroupName('${groupId}')" title="${lang === 'de' ? 'Speichern' : 'Save'}">${checkSvg}</button>
+      <button class="icon-btn cancel" onclick="cancelEditGroupName()" title="${lang === 'de' ? 'Abbrechen' : 'Cancel'}">${xSvg}</button>
+    </div>`;
+  const input = document.getElementById('edit-' + groupId);
+  input.focus();
+  input.select();
+}
+
+function handleGroupNameKey(e, groupId) {
+  if (e.key === 'Enter') { e.preventDefault(); saveGroupName(groupId); }
+  else if (e.key === 'Escape') { e.preventDefault(); cancelEditGroupName(); }
+}
+
+function saveGroupName(groupId) {
+  const input = document.getElementById('edit-' + groupId);
+  if (!input) return;
+  const newName = input.value.trim();
+  const g = state.groups.find(x => x.id === groupId);
+  if (g && newName) {
+    g.name = newName;
+    saveState();
+    showToast(lang === 'de' ? 'Gruppenname gespeichert' : 'Group name saved', 'success', 1500);
+  }
+  render();
+}
+
+function cancelEditGroupName() {
+  render();
+}
+
 function resetGroupNames() {
   state.groups.forEach((g, i) => {
     g.name = (t('groups.groupName') || 'Group') + ' ' + (i + 1);
@@ -1034,7 +1086,12 @@ function renderGroups() {
     const maxAge = Math.max(...ages);
 
     return `<div class="group-card">
-      <div class="group-header">${escHtml(g.name)} (${members.length} ${t('groups.members')})</div>
+      <div class="group-header" id="gh-${g.id}">
+        <div class="name-display" onclick="startEditGroupName('${g.id}')" title="${lang === 'de' ? 'Klicken zum Bearbeiten' : 'Click to edit'}">
+          <span>${escHtml(g.name)} (${members.length} ${t('groups.members')})</span>
+          <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+      </div>
       <div class="group-body">
         <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:8px">${t('groups.ageRange')}: ${minAge}-${maxAge}</div>
         ${members.map(m => `<div class="member">
