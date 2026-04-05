@@ -169,8 +169,20 @@ input[type="file"] { padding: 6px; }
 .group-header .icon-btn.cancel:hover { background: var(--accent); }
 .group-header .icon-btn svg { width: 16px; height: 16px; }
 .group-card .group-body { padding: 12px; }
-.group-card .member { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; display: flex; justify-content: space-between; }
+.group-card .member { padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; position: relative; }
 .group-card .member:last-child { border-bottom: none; }
+.group-card .member .member-info { flex: 1; display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+.group-card .member .member-name { flex-shrink: 0; }
+.group-card .member .member-meta { color: var(--text-light); font-size: 0.8rem; white-space: nowrap; }
+.group-card .member .move-btn { background: none; border: none; cursor: pointer; color: var(--text-light); padding: 4px 6px; border-radius: 4px; opacity: 0; transition: all 0.15s; flex-shrink: 0; }
+.group-card .member:hover .move-btn { opacity: 1; }
+.group-card .member .move-btn:hover { background: var(--bg); color: var(--primary); }
+.group-card .member .move-btn svg { width: 14px; height: 14px; display: block; }
+.move-menu { position: absolute; right: 0; top: 100%; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 50; min-width: 180px; padding: 4px 0; display: none; }
+.move-menu.show { display: block; }
+.move-menu button { display: block; width: 100%; background: none; border: none; text-align: left; padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--text); }
+.move-menu button:hover { background: var(--bg); color: var(--primary); }
+.move-menu .menu-label { padding: 6px 14px; font-size: 0.7rem; text-transform: uppercase; color: var(--text-light); font-weight: 600; letter-spacing: 0.5px; }
 
 .discipline-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
 .discipline-tabs button { padding: 8px 16px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
@@ -282,7 +294,9 @@ const I18N = {
       presets: 'Presets', customThemes: 'Custom Themes',
       importCsv: 'Import Name List (CSV)',
       csvHint: 'CSV format: Category in column A, Names in column B. One name per row.',
-      csvImported: 'themes imported!', clearCustom: 'Clear Custom Themes'
+      csvImported: 'themes imported!', clearCustom: 'Clear Custom Themes',
+      moveTo: 'Move to', resetAuto: 'Reset to Auto Distribution',
+      manualEdit: 'Manual edits active', movedTo: 'Moved to', resetAutoConfirm: 'Reset groups to automatic distribution? Manual changes will be lost.'
     },
     scoring: {
       selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
@@ -350,7 +364,9 @@ const I18N = {
       presets: 'Vorlagen', customThemes: 'Eigene Themen',
       importCsv: 'Namensliste importieren (CSV)',
       csvHint: 'CSV-Format: Kategorie in Spalte A, Namen in Spalte B. Ein Name pro Zeile.',
-      csvImported: 'Themen importiert!', clearCustom: 'Eigene Themen l\u00f6schen'
+      csvImported: 'Themen importiert!', clearCustom: 'Eigene Themen l\u00f6schen',
+      moveTo: 'Verschieben nach', resetAuto: 'Automatische Verteilung wiederherstellen',
+      manualEdit: 'Manuell bearbeitet', movedTo: 'Verschoben nach', resetAutoConfirm: 'Gruppen auf automatische Verteilung zur\u00fccksetzen? Manuelle \u00c4nderungen gehen verloren.'
     },
     scoring: {
       selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
@@ -840,10 +856,63 @@ function sortGroups() {
   }
 
   state.groups = groups;
-  // Clear group assignment for inactive
+  // Snapshot for reset-to-auto
+  state.autoGroupsSnapshot = JSON.parse(JSON.stringify(groups));
+  state.manuallyEdited = false;
   saveState();
   render();
 }
+
+function moveParticipant(participantId, targetGroupId) {
+  // Remove from current group
+  for (const g of state.groups) {
+    const idx = g.participantIds.indexOf(participantId);
+    if (idx !== -1) g.participantIds.splice(idx, 1);
+  }
+  // Add to target group
+  const target = state.groups.find(g => g.id === targetGroupId);
+  if (target) target.participantIds.push(participantId);
+  state.manuallyEdited = true;
+  // Close any open menu
+  document.querySelectorAll('.move-menu.show').forEach(m => m.classList.remove('show'));
+  saveState();
+  render();
+  const p = state.participants.find(x => x.id === participantId);
+  if (p && target) {
+    showToast(`${p.name} \u2192 ${target.name}`, 'success', 1500);
+  }
+}
+
+function toggleMoveMenu(participantId) {
+  const menu = document.getElementById('mm-' + participantId);
+  if (!menu) return;
+  const wasOpen = menu.classList.contains('show');
+  // Close all other menus
+  document.querySelectorAll('.move-menu.show').forEach(m => m.classList.remove('show'));
+  if (!wasOpen) menu.classList.add('show');
+}
+
+function resetToAutoDistribution() {
+  showConfirm(t('groups.resetAutoConfirm'), () => {
+    if (state.autoGroupsSnapshot) {
+      state.groups = JSON.parse(JSON.stringify(state.autoGroupsSnapshot));
+      state.manuallyEdited = false;
+      saveState();
+      render();
+      showToast(lang === 'de' ? 'Automatische Verteilung wiederhergestellt' : 'Auto distribution restored', 'info');
+    } else {
+      // No snapshot — just re-sort
+      sortGroups();
+    }
+  });
+}
+
+// Close move menus when clicking elsewhere
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.move-btn') && !e.target.closest('.move-menu')) {
+    document.querySelectorAll('.move-menu.show').forEach(m => m.classList.remove('show'));
+  }
+});
 
 // ============================================================
 // Themed Group Names
@@ -1094,10 +1163,25 @@ function renderGroups() {
       </div>
       <div class="group-body">
         <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:8px">${t('groups.ageRange')}: ${minAge}-${maxAge}</div>
-        ${members.map(m => `<div class="member">
-          <span>${escHtml(m.name)}</span>
-          <span style="color:var(--text-light);font-size:0.8rem">${calcAge(m.dob)}y / ${m.weight}kg / ${beltName(m.belt)}</span>
-        </div>`).join('')}
+        ${members.map(m => {
+          const otherGroups = state.groups.filter(og => og.id !== g.id);
+          const menuItems = otherGroups.map(og =>
+            `<button onclick="moveParticipant('${m.id}','${og.id}')">${escHtml(og.name)}</button>`
+          ).join('');
+          return `<div class="member">
+            <div class="member-info">
+              <span class="member-name">${escHtml(m.name)}</span>
+              <span class="member-meta">${calcAge(m.dob)}y / ${m.weight}kg / ${beltName(m.belt)}</span>
+            </div>
+            <button class="move-btn" onclick="event.stopPropagation();toggleMoveMenu('${m.id}')" title="${t('groups.moveTo')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <div class="move-menu" id="mm-${m.id}">
+              <div class="menu-label">${t('groups.moveTo')}</div>
+              ${menuItems}
+            </div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }).join('');
@@ -1112,8 +1196,10 @@ function renderGroups() {
   const hasCustom = Object.keys(customThemes).length > 0;
 
   return `
-    <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap" class="no-print">
+    <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" class="no-print">
       <button class="btn btn-primary" onclick="sortGroups()">${t('groups.resort')}</button>
+      ${state.manuallyEdited ? `<button class="btn btn-outline" onclick="resetToAutoDistribution()">${t('groups.resetAuto')}</button>
+        <span class="badge badge-active" style="background:#fff3e0;color:#e65100">${t('groups.manualEdit')}</span>` : ''}
     </div>
     <div class="card no-print">
       <h2>${t('groups.theme')}</h2>
