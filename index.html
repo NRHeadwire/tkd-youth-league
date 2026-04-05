@@ -155,6 +155,11 @@ input[type="file"] { padding: 6px; }
 
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .group-card { background: var(--card); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; }
+.group-card.overfull { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.15); }
+.group-card.overfull .group-header { background: var(--accent); }
+.group-card.underfull { border-color: var(--warning); box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.15); }
+.group-card.underfull .group-header { background: var(--warning); }
+.overfull-warning, .underfull-warning { font-size: 0.75rem; font-weight: 600; padding: 4px 10px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-left: 6px; }
 .group-card .group-header { background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .group-header .name-display { flex: 1; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: background 0.15s; display: flex; align-items: center; gap: 8px; }
 .group-header .name-display:hover { background: rgba(255,255,255,0.15); }
@@ -296,7 +301,8 @@ const I18N = {
       csvHint: 'CSV format: Category in column A, Names in column B. One name per row.',
       csvImported: 'themes imported!', clearCustom: 'Clear Custom Themes',
       moveTo: 'Move to', resetAuto: 'Reset to Auto Distribution',
-      manualEdit: 'Manual edits active', movedTo: 'Moved to', resetAutoConfirm: 'Reset groups to automatic distribution? Manual changes will be lost.'
+      manualEdit: 'Manual edits active', movedTo: 'Moved to', resetAutoConfirm: 'Reset groups to automatic distribution? Manual changes will be lost.',
+      tooMany: 'Too many (max 4)', tooFew: 'Too few (min 3)'
     },
     scoring: {
       selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
@@ -366,7 +372,8 @@ const I18N = {
       csvHint: 'CSV-Format: Kategorie in Spalte A, Namen in Spalte B. Ein Name pro Zeile.',
       csvImported: 'Themen importiert!', clearCustom: 'Eigene Themen l\u00f6schen',
       moveTo: 'Verschieben nach', resetAuto: 'Automatische Verteilung wiederherstellen',
-      manualEdit: 'Manuell bearbeitet', movedTo: 'Verschoben nach', resetAutoConfirm: 'Gruppen auf automatische Verteilung zur\u00fccksetzen? Manuelle \u00c4nderungen gehen verloren.'
+      manualEdit: 'Manuell bearbeitet', movedTo: 'Verschoben nach', resetAutoConfirm: 'Gruppen auf automatische Verteilung zur\u00fccksetzen? Manuelle \u00c4nderungen gehen verloren.',
+      tooMany: 'Zu viele (max 4)', tooFew: 'Zu wenige (min 3)'
     },
     scoring: {
       selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
@@ -847,36 +854,78 @@ function sortGroups() {
     return (a.weight || 0) - (b.weight || 0);
   });
 
-  // Calculate group sizes: prefer 4, allow 3
-  let numGroups = Math.ceil(active.length / 4);
-  if (numGroups < 1) numGroups = 1;
-  // Make sure no group has fewer than 3
-  while (numGroups > 1 && Math.floor(active.length / numGroups) < 3) numGroups--;
+  // Find optimal partitioning via DP
+  // Minimizes total age span across groups, with group sizes 3 or 4
+  const sizes = computeOptimalGroupSizes(active);
 
-  // Calculate how many participants per group
-  const baseSize = Math.floor(active.length / numGroups);
-  const remainder = active.length % numGroups;
-
-  // Sequential fill: keep similar participants together
-  // Groups are filled in order so age/belt/weight clusters stay intact
   const groups = [];
   let idx = 0;
-  for (let i = 0; i < numGroups; i++) {
-    const size = baseSize + (i < remainder ? 1 : 0);
+  sizes.forEach((size, i) => {
     groups.push({
       id: 'g' + (i + 1),
       name: (t('groups.groupName') || 'Group') + ' ' + (i + 1),
       participantIds: active.slice(idx, idx + size).map(p => p.id)
     });
     idx += size;
-  }
+  });
 
   state.groups = groups;
-  // Snapshot for reset-to-auto
   state.autoGroupsSnapshot = JSON.parse(JSON.stringify(groups));
   state.manuallyEdited = false;
   saveState();
   render();
+}
+
+// DP: find optimal group sizes (3 or 4) that minimize total age span
+// Tiebreak 1: fewer size-3 groups (prefer groups of 4)
+// Tiebreak 2: lexicographic comparison of spans in order (earlier = smaller)
+//   This preserves pure age clusters for younger groups
+function computeOptimalGroupSizes(sortedParticipants) {
+  const n = sortedParticipants.length;
+  if (n < 3) return [n]; // fallback, will show underfull warning
+  const ages = sortedParticipants.map(p => calcAge(p.dob));
+
+  const dp = new Array(n + 1).fill(null);
+  dp[0] = { totalSpan: 0, threeCount: 0, spans: [], sizes: [] };
+
+  const isBetter = (a, b) => {
+    if (!b) return true;
+    if (a.totalSpan !== b.totalSpan) return a.totalSpan < b.totalSpan;
+    if (a.threeCount !== b.threeCount) return a.threeCount < b.threeCount;
+    // Lexicographic: earlier groups should have smaller spans
+    for (let i = 0; i < Math.min(a.spans.length, b.spans.length); i++) {
+      if (a.spans[i] !== b.spans[i]) return a.spans[i] < b.spans[i];
+    }
+    return false;
+  };
+
+  for (let i = 3; i <= n; i++) {
+    for (const s of [3, 4]) {
+      if (i - s < 0) continue;
+      const prev = dp[i - s];
+      if (!prev) continue;
+      const groupAges = ages.slice(i - s, i);
+      const ageSpan = Math.max(...groupAges) - Math.min(...groupAges);
+      const candidate = {
+        totalSpan: prev.totalSpan + ageSpan,
+        threeCount: prev.threeCount + (s === 3 ? 1 : 0),
+        spans: [...prev.spans, ageSpan],
+        sizes: [...prev.sizes, s]
+      };
+      if (isBetter(candidate, dp[i])) dp[i] = candidate;
+    }
+  }
+
+  if (!dp[n]) {
+    let numGroups = Math.ceil(n / 4);
+    while (numGroups > 1 && Math.floor(n / numGroups) < 3) numGroups--;
+    const baseSize = Math.floor(n / numGroups);
+    const remainder = n % numGroups;
+    const sizes = [];
+    for (let i = 0; i < numGroups; i++) sizes.push(baseSize + (i < remainder ? 1 : 0));
+    return sizes;
+  }
+  return dp[n].sizes;
 }
 
 function moveParticipant(participantId, targetGroupId) {
@@ -1170,10 +1219,14 @@ function renderGroups() {
     const minAge = Math.min(...ages);
     const maxAge = Math.max(...ages);
 
-    return `<div class="group-card">
+    const isOverfull = members.length > 4;
+    const isUnderfull = members.length < 3;
+    const cardClass = isOverfull ? 'group-card overfull' : isUnderfull ? 'group-card underfull' : 'group-card';
+    const warning = isOverfull ? `<span class="overfull-warning">\u26A0 ${t('groups.tooMany')}</span>` : isUnderfull ? `<span class="underfull-warning">\u26A0 ${t('groups.tooFew')}</span>` : '';
+    return `<div class="${cardClass}">
       <div class="group-header" id="gh-${g.id}">
         <div class="name-display" onclick="startEditGroupName('${g.id}')" title="${lang === 'de' ? 'Klicken zum Bearbeiten' : 'Click to edit'}">
-          <span>${escHtml(g.name)} (${members.length} ${t('groups.members')})</span>
+          <span>${escHtml(g.name)} (${members.length} ${t('groups.members')})${warning}</span>
           <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         </div>
       </div>
