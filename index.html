@@ -770,29 +770,147 @@ function importExcel(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
+  const isCsv = file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt');
+
   reader.onload = function(e) {
-    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    let imported = 0;
+    let rows;
+    try {
+      if (isCsv) {
+        // Parse CSV with auto-detected delimiter (comma, semicolon, or tab)
+        const text = e.target.result;
+        rows = parseCsvText(text);
+      } else {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      }
+    } catch (err) {
+      showToast('Error parsing file: ' + err.message, 'error', 4000);
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      showToast(lang === 'de' ? 'Datei ist leer oder konnte nicht gelesen werden' : 'File is empty or could not be read', 'error', 4000);
+      return;
+    }
+
+    // Find columns by fuzzy header matching
+    const findKey = (row, candidates) => {
+      const keys = Object.keys(row);
+      for (const c of candidates) {
+        const match = keys.find(k => k.toLowerCase().trim() === c.toLowerCase());
+        if (match) return match;
+      }
+      // Partial match
+      for (const c of candidates) {
+        const match = keys.find(k => k.toLowerCase().trim().includes(c.toLowerCase()));
+        if (match) return match;
+      }
+      return null;
+    };
+
+    const sample = rows[0];
+    const nameKey = findKey(sample, ['name', 'vorname', 'fullname', 'full name']);
+    const dobKey = findKey(sample, ['dob', 'date of birth', 'geburtsdatum', 'birthday', 'birth date', 'geburt']);
+    const weightKey = findKey(sample, ['weight', 'gewicht', 'kg']);
+    const beltKey = findKey(sample, ['belt', 'gurtel', 'g\u00fcrtel', 'guertel', 'rank', 'level']);
+
+    if (!nameKey) {
+      const found = Object.keys(sample).join(', ');
+      showToast((lang === 'de' ? 'Keine Namensspalte gefunden. Spalten in Datei: ' : 'No Name column found. Columns in file: ') + found, 'error', 6000);
+      return;
+    }
+
+    let imported = 0, skipped = 0;
     for (const row of rows) {
-      const name = (row.Name || row.name || row.NAME || '').toString().trim();
-      if (!name) continue;
-      let dob = row.DOB || row.dob || row.Geburtsdatum || row.geburtsdatum || row['Date of Birth'] || '';
-      if (dob instanceof Date) dob = dob.toISOString().split('T')[0];
-      else if (typeof dob === 'number') { dob = excelDateToISO(dob); }
-      else { dob = parseDateStr(dob.toString()); }
-      const weight = parseFloat(row.Weight || row.weight || row.Gewicht || row.gewicht || 0) || 0;
-      let belt = (row.Belt || row.belt || row['G\u00fcrtel'] || row.guertel || row.Gürtel || 'white').toString().trim().toLowerCase();
-      belt = matchBelt(belt);
+      const name = (row[nameKey] || '').toString().trim();
+      if (!name) { skipped++; continue; }
+
+      let dob = '';
+      if (dobKey) {
+        let raw = row[dobKey];
+        if (raw instanceof Date) dob = raw.toISOString().split('T')[0];
+        else if (typeof raw === 'number') dob = excelDateToISO(raw);
+        else if (raw) dob = parseDateStr(raw.toString().trim());
+      }
+
+      let weight = 0;
+      if (weightKey) {
+        const raw = row[weightKey];
+        // Handle comma decimal separator (European)
+        const s = (raw || '').toString().replace(',', '.').trim();
+        weight = parseFloat(s) || 0;
+      }
+
+      let belt = 'white';
+      if (beltKey) {
+        belt = matchBelt((row[beltKey] || 'white').toString().trim().toLowerCase());
+      }
+
       state.participants.push({ id: generateId(), name, dob, weight, belt, active: true });
       imported++;
     }
+
     saveState();
     render();
-    showToast((lang === 'de' ? 'Importiert: ' : 'Imported: ') + imported + (lang === 'de' ? ' Teilnehmer' : ' participants'), 'success');
+    if (imported > 0) {
+      showToast((lang === 'de' ? 'Importiert: ' : 'Imported: ') + imported + (lang === 'de' ? ' Teilnehmer' : ' participants'), 'success');
+    } else {
+      showToast((lang === 'de' ? 'Keine Teilnehmer importiert. Pr\u00fcfe das Dateiformat.' : 'No participants imported. Check file format.'), 'warning', 4000);
+    }
   };
-  reader.readAsArrayBuffer(file);
+
+  if (isCsv) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseCsvText(text) {
+  // Strip BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.length > 0);
+  if (lines.length === 0) return [];
+
+  // Auto-detect delimiter from first line
+  const firstLine = lines[0];
+  let delim = ',';
+  const semiCount = (firstLine.match(/;/g) || []).length;
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  if (semiCount > commaCount && semiCount >= tabCount) delim = ';';
+  else if (tabCount > commaCount) delim = '\t';
+
+  // Simple CSV parser supporting quoted fields
+  const parseLine = (line) => {
+    const result = [];
+    let cur = '', inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuote) {
+        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') inQuote = false;
+        else cur += ch;
+      } else {
+        if (ch === '"') inQuote = true;
+        else if (ch === delim) { result.push(cur); cur = ''; }
+        else cur += ch;
+      }
+    }
+    result.push(cur);
+    return result.map(s => s.trim());
+  };
+
+  const headers = parseLine(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+    rows.push(row);
+  }
+  return rows;
 }
 
 function excelDateToISO(serial) {
