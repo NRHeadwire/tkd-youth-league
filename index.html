@@ -930,6 +930,14 @@ function parseDateStr(s) {
 }
 
 function matchBelt(raw) {
+  // Numeric kup grading (TKD): 10=white, 9=whiteYellow, ... 1=redBlack, 0=black
+  const trimmed = (raw || '').toString().trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const n = parseInt(trimmed, 10);
+    const kupMap = { 10: 'white', 9: 'whiteYellow', 8: 'yellow', 7: 'yellowGreen', 6: 'green', 5: 'greenBlue', 4: 'blue', 3: 'blueRed', 2: 'red', 1: 'redBlack', 0: 'black' };
+    if (kupMap[n]) return kupMap[n];
+    if (n >= 11 || n < 0) return 'black'; // dan grades or out-of-range
+  }
   const map = {
     'white': 'white', 'weiss': 'white', 'weiß': 'white',
     'white-yellow': 'whiteYellow', 'weiss-gelb': 'whiteYellow', 'weiß-gelb': 'whiteYellow',
@@ -943,7 +951,7 @@ function matchBelt(raw) {
     'red-black': 'redBlack', 'rot-schwarz': 'redBlack',
     'black': 'black', 'schwarz': 'black'
   };
-  return map[raw] || 'white';
+  return map[trimmed.toLowerCase()] || 'white';
 }
 
 function exportParticipantsExcel() {
