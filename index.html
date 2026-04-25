@@ -305,7 +305,8 @@ const I18N = {
       moveTo: 'Move to', resetAuto: 'Reset to Auto Distribution',
       manualEdit: 'Manual edits active', movedTo: 'Moved to', resetAutoConfirm: 'Reset groups to automatic distribution? Manual changes will be lost.',
       tooMany: 'Too many (max 4)', tooFew: 'Too few (min 3)',
-      printRoster: 'Print Roster', printAllSheets: 'Print All Score Sheets', refereeSheet: 'Referee Score Sheet'
+      printRoster: 'Print Roster', printAllSheets: 'Print All Score Sheets', refereeSheet: 'Referee Score Sheet',
+      addGroup: 'Add Empty Group'
     },
     scoring: {
       selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
@@ -379,7 +380,8 @@ const I18N = {
       moveTo: 'Verschieben nach', resetAuto: 'Automatische Verteilung wiederherstellen',
       manualEdit: 'Manuell bearbeitet', movedTo: 'Verschoben nach', resetAutoConfirm: 'Gruppen auf automatische Verteilung zur\u00fccksetzen? Manuelle \u00c4nderungen gehen verloren.',
       tooMany: 'Zu viele (max 4)', tooFew: 'Zu wenige (min 3)',
-      printRoster: 'Gruppen-Aushang drucken', printAllSheets: 'Alle Bewertungsbl\u00e4tter drucken', refereeSheet: 'Bewertungsblatt'
+      printRoster: 'Gruppen-Aushang drucken', printAllSheets: 'Alle Bewertungsbl\u00e4tter drucken', refereeSheet: 'Bewertungsblatt',
+      addGroup: 'Leere Gruppe hinzuf\u00fcgen'
     },
     scoring: {
       selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
@@ -1066,15 +1068,22 @@ function computeOptimalGroupSizes(sortedParticipants) {
 }
 
 function moveParticipant(participantId, targetGroupId) {
-  // Remove from current group
+  // Remove from current group, track source
+  let sourceGroup = null;
   for (const g of state.groups) {
     const idx = g.participantIds.indexOf(participantId);
-    if (idx !== -1) g.participantIds.splice(idx, 1);
+    if (idx !== -1) { g.participantIds.splice(idx, 1); sourceGroup = g; }
   }
   // Add to target group
   const target = state.groups.find(g => g.id === targetGroupId);
   if (target) target.participantIds.push(participantId);
   state.manuallyEdited = true;
+  // Auto-delete the source group only if it became empty
+  const removed = [];
+  if (sourceGroup && sourceGroup.participantIds.length === 0) {
+    state.groups = state.groups.filter(g => g.id !== sourceGroup.id);
+    removed.push(sourceGroup.name);
+  }
   // Close any open menu
   document.querySelectorAll('.move-menu.show').forEach(m => m.classList.remove('show'));
   saveState();
@@ -1083,6 +1092,27 @@ function moveParticipant(participantId, targetGroupId) {
   if (p && target) {
     showToast(`${p.name} \u2192 ${target.name}`, 'success', 1500);
   }
+  if (removed.length > 0) {
+    showToast((lang === 'de' ? 'Leere Gruppe gel\u00f6scht: ' : 'Empty group removed: ') + removed.join(', '), 'info', 2000);
+  }
+}
+
+function addEmptyGroup() {
+  // Generate unique ID
+  let n = state.groups.length + 1;
+  let id;
+  do { id = 'g' + n; n++; } while (state.groups.find(g => g.id === id));
+  state.groups.push({
+    id,
+    name: (t('groups.groupName') || 'Group') + ' ' + state.groups.length + 1,
+    participantIds: []
+  });
+  // Renumber name based on position
+  state.groups[state.groups.length - 1].name = (t('groups.groupName') || 'Group') + ' ' + state.groups.length;
+  state.manuallyEdited = true;
+  saveState();
+  render();
+  showToast(lang === 'de' ? 'Leere Gruppe hinzugef\u00fcgt' : 'Empty group added', 'success', 1500);
 }
 
 function toggleMoveMenu(participantId) {
@@ -1412,6 +1442,7 @@ function renderGroups() {
   return `
     <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" class="no-print">
       <button class="btn btn-primary" onclick="sortGroups()">${t('groups.resort')}</button>
+      <button class="btn btn-outline" onclick="addEmptyGroup()">+ ${t('groups.addGroup')}</button>
       <button class="btn btn-outline" onclick="printGroupRosters()">&#128424; ${t('groups.printRoster')}</button>
       <button class="btn btn-outline" onclick="printAllScoreSheets()">&#128424; ${t('groups.printAllSheets')}</button>
       ${state.manuallyEdited ? `<button class="btn btn-outline" onclick="resetToAutoDistribution()">${t('groups.resetAuto')}</button>
