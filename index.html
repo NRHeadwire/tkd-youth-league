@@ -339,7 +339,8 @@ const I18N = {
       formScoring: 'Form Scoring', formType: 'Form Type', ratingLevel: 'Rating', pointsValue: 'Points',
       save: 'Save Settings', saved: 'Settings saved!', reset: 'Reset All Data',
       resetConfirm: 'This will delete ALL data. Are you sure?', freeForm: 'Free Form',
-      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Good', outstanding: 'Outstanding'
+      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Good', outstanding: 'Outstanding',
+      beltTerminology: 'Belt Terminology', beltStriped: 'Striped (e.g. White-Yellow)', beltAdvanced: 'Advanced (e.g. White Advanced / Moo)'
     },
     event: {
       menu: 'Event', newEvent: 'New Event', saveEvent: 'Save Event', loadEvent: 'Load Event',
@@ -348,7 +349,8 @@ const I18N = {
       loadHint: 'Load a previously saved event file.',
       saved: 'Event saved!', loaded: 'Event loaded!', cancel: 'Cancel'
     },
-    belts: { white: 'White', whiteYellow: 'White-Yellow', yellow: 'Yellow', yellowGreen: 'Yellow-Green', green: 'Green', greenBlue: 'Green-Blue', blue: 'Blue', blueRed: 'Blue-Red', red: 'Red', redBlack: 'Red-Black', black: 'Black' }
+    belts: { white: 'White', whiteYellow: 'White-Yellow', yellow: 'Yellow', yellowGreen: 'Yellow-Green', green: 'Green', greenBlue: 'Green-Blue', blue: 'Blue', blueRed: 'Blue-Red', red: 'Red', redBlack: 'Red-Black', black: 'Black' },
+    beltsAdv: { white: 'White (Moo)', whiteYellow: 'White Advanced', yellow: 'Yellow', yellowGreen: 'Yellow Advanced', green: 'Green', greenBlue: 'Green Advanced', blue: 'Blue', blueRed: 'Blue Advanced', red: 'Red', redBlack: 'Red Advanced', black: 'Black' }
   },
   de: {
     title: 'TKD Jugendliga',
@@ -410,7 +412,8 @@ const I18N = {
       formScoring: 'Form-Bewertung', formType: 'Formtyp', ratingLevel: 'Bewertung', pointsValue: 'Punkte',
       save: 'Einstellungen speichern', saved: 'Einstellungen gespeichert!', reset: 'Alle Daten zur\u00fccksetzen',
       resetConfirm: 'Dies l\u00f6scht ALLE Daten. Bist du sicher?', freeForm: 'Freie Form',
-      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Gut', outstanding: 'Hervorragend'
+      poomsae13: 'Poomsae 1-3', poomsae48: 'Poomsae 4-8', ok: 'OK', good: 'Gut', outstanding: 'Hervorragend',
+      beltTerminology: 'G\u00fcrtel-Bezeichnung', beltStriped: 'Gestreift (z.B. Weiss-Gelb)', beltAdvanced: 'Advanced (z.B. White Advanced / Moo)'
     },
     event: {
       menu: 'Event', newEvent: 'Neuer Wettkampf', saveEvent: 'Event speichern', loadEvent: 'Event laden',
@@ -419,7 +422,8 @@ const I18N = {
       loadHint: 'Einen zuvor gespeicherten Wettkampf laden.',
       saved: 'Event gespeichert!', loaded: 'Event geladen!', cancel: 'Abbrechen'
     },
-    belts: { white: 'Weiss', whiteYellow: 'Weiss-Gelb', yellow: 'Gelb', yellowGreen: 'Gelb-Gr\u00fcn', green: 'Gr\u00fcn', greenBlue: 'Gr\u00fcn-Blau', blue: 'Blau', blueRed: 'Blau-Rot', red: 'Rot', redBlack: 'Rot-Schwarz', black: 'Schwarz' }
+    belts: { white: 'Weiss', whiteYellow: 'Weiss-Gelb', yellow: 'Gelb', yellowGreen: 'Gelb-Gr\u00fcn', green: 'Gr\u00fcn', greenBlue: 'Gr\u00fcn-Blau', blue: 'Blau', blueRed: 'Blau-Rot', red: 'Rot', redBlack: 'Rot-Schwarz', black: 'Schwarz' },
+    beltsAdv: { white: 'Weiss (Moo)', whiteYellow: 'Weiss Advanced', yellow: 'Gelb', yellowGreen: 'Gelb Advanced', green: 'Gr\u00fcn', greenBlue: 'Gr\u00fcn Advanced', blue: 'Blau', blueRed: 'Blau Advanced', red: 'Rot', redBlack: 'Rot Advanced', black: 'Schwarz' }
   }
 };
 
@@ -456,6 +460,7 @@ function defaultState() {
     competition: { name: 'TKD Youth League 2026', date: '', location: '' },
     settings: {
       placementPoints: { '1': 6, '2': 4, '3': 2, '4': 1 },
+      beltTerminology: 'striped',
       formScoring: {
         free: { ok: 1, good: 2, outstanding: 3 },
         'poomsae1-3': { ok: 1.5, good: 2.5, outstanding: 3.5 },
@@ -499,7 +504,9 @@ function t(path) {
 }
 
 function beltName(beltId) {
-  return t('belts.' + beltId) || beltId;
+  const useAdvanced = state.settings?.beltTerminology === 'advanced';
+  const key = (useAdvanced ? 'beltsAdv.' : 'belts.') + beltId;
+  return t(key) || beltId;
 }
 
 function beltIndex(beltId) {
@@ -2427,6 +2434,19 @@ function renderSettings() {
       </div>
     </div>
     <div class="card">
+      <h2>${t('settings.beltTerminology')}</h2>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="beltTerm" value="striped" ${(s.beltTerminology || 'striped') === 'striped' ? 'checked' : ''} />
+          <span>${t('settings.beltStriped')}</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="beltTerm" value="advanced" ${s.beltTerminology === 'advanced' ? 'checked' : ''} />
+          <span>${t('settings.beltAdvanced')}</span>
+        </label>
+      </div>
+    </div>
+    <div class="card">
       <h2>${t('settings.formScoring')}</h2>
       <table>
         <tr><th>${t('settings.formType')}</th><th>${t('settings.ratingLevel')}</th><th>${t('settings.pointsValue')}</th></tr>
@@ -2448,6 +2468,9 @@ function saveSettings() {
   [1,2,3,4].forEach(i => {
     state.settings.placementPoints[i] = parseInt(document.getElementById('pp' + i).value) || 0;
   });
+
+  const beltTerm = document.querySelector('input[name="beltTerm"]:checked');
+  if (beltTerm) state.settings.beltTerminology = beltTerm.value;
 
   const formTypes = ['free', 'poomsae1-3', 'poomsae4-8'];
   const ratings = ['ok', 'good', 'outstanding'];
