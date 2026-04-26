@@ -325,7 +325,7 @@ const I18N = {
       overallRanking: 'Overall Ranking', group: 'Group', participant: 'Participant',
       total: 'Total Points', place: 'Place', noData: 'No scoring data yet.',
       reaction: 'RE', strength: 'ST', speedKicking: 'SK', form: 'FO', kyorugi: 'KY',
-      scoreAndRank: 'Score (Rank)', pts: 'pts'
+      scoreAndRank: 'Score (Rank)', pts: 'pts', printRankings: 'Print Rankings'
     },
     certificates: {
       generate: 'Generate Certificates (PDF)', generating: 'Generating...',
@@ -400,7 +400,7 @@ const I18N = {
       overallRanking: 'Gesamtrangliste', group: 'Gruppe', participant: 'Teilnehmer',
       total: 'Gesamtpunkte', place: 'Platz', noData: 'Noch keine Bewertungsdaten.',
       reaction: 'RE', strength: 'KR', speedKicking: 'ST', form: 'FO', kyorugi: 'KY',
-      scoreAndRank: 'Ergebnis (Rang)', pts: 'Pkt'
+      scoreAndRank: 'Ergebnis (Rang)', pts: 'Pkt', printRankings: 'Rangliste drucken'
     },
     certificates: {
       generate: 'Urkunden erstellen (PDF)', generating: 'Wird erstellt...',
@@ -2097,7 +2097,10 @@ function renderRankings() {
     return `<div class="card"><p>${t('rankings.noData')}</p></div>`;
   }
 
-  let html = `<h2 style="margin-bottom:16px">${t('rankings.overallRanking')}</h2>`;
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px" class="no-print">
+    <h2 style="margin:0">${t('rankings.overallRanking')}</h2>
+    <button class="btn btn-outline" onclick="printRankings()">&#128424; ${t('rankings.printRankings')}</button>
+  </div>`;
 
   for (const group of state.groups) {
     const ps = getGroupParticipants(group.id);
@@ -2618,6 +2621,86 @@ function printAllScoreSheets() {
   }
 
   html += `</body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 250);
+}
+
+// Printable final rankings — all groups, one or two per page
+function printRankings() {
+  if (state.groups.length === 0) return;
+  const compName = state.competition.name || 'TKD Youth League';
+  const dateStr = state.competition.date ? new Date(state.competition.date).toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-US') : '';
+
+  const css = `
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: #212121; font-size: 10pt; }
+    .container { padding: 6px 10px; }
+    .header { text-align: center; padding-bottom: 6px; border-bottom: 2px solid #1a237e; margin-bottom: 14px; }
+    .header h1 { font-size: 1.4rem; margin: 0; color: #1a237e; }
+    .header .meta { font-size: 0.85rem; color: #666; margin-top: 3px; }
+    .group-block { margin-bottom: 18px; page-break-inside: avoid; }
+    .group-name { font-size: 1.1rem; font-weight: 700; color: #1a237e; padding: 6px 10px; background: #e8eaf6; border-left: 4px solid #1a237e; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #888; padding: 6px 8px; text-align: left; font-size: 9pt; }
+    th { background: #1a237e; color: #fff; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; font-size: 8pt; text-align: center; }
+    td { vertical-align: middle; }
+    td.place { text-align: center; font-weight: 700; width: 36px; font-size: 11pt; }
+    td.place.r1 { background: #ffd700; color: #333; }
+    td.place.r2 { background: #c0c0c0; color: #333; }
+    td.place.r3 { background: #cd7f32; color: #fff; }
+    td.name { font-weight: 600; background: #f5f5f5; }
+    td.disc { text-align: center; font-size: 8.5pt; }
+    td.disc .rank { color: #1a237e; font-weight: 700; }
+    td.total { text-align: center; font-weight: 700; color: #1a237e; font-size: 10pt; background: #f0f4ff; }
+    .footer { margin-top: 16px; text-align: center; color: #999; font-size: 0.7rem; }
+  `;
+
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(compName)} - ${t('rankings.overallRanking')}</title><style>${css}</style></head><body>
+    <div class="container">
+      <div class="header">
+        <h1>${escHtml(compName)} \u2014 ${t('rankings.overallRanking')}</h1>
+        <div class="meta">${[state.competition.location, dateStr].filter(Boolean).join(' \u2022 ')}</div>
+      </div>`;
+
+  for (const group of state.groups) {
+    const overallRankings = calcOverallRankings(group.id);
+    if (overallRankings.length === 0) continue;
+    html += `<div class="group-block">
+      <div class="group-name">${escHtml(group.name)}</div>
+      <table>
+        <tr>
+          <th>${t('rankings.place')}</th>
+          <th style="text-align:left">${t('rankings.participant')}</th>
+          <th>${t('rankings.reaction')}</th>
+          <th>${t('rankings.strength')}</th>
+          <th>${t('rankings.speedKicking')}</th>
+          <th>${t('rankings.form')}</th>
+          <th>${t('rankings.kyorugi')}</th>
+          <th>${t('rankings.total')}</th>
+        </tr>`;
+    overallRankings.forEach(r => {
+      const p = state.participants.find(x => x.id === r.id);
+      const placeClass = r.rank <= 3 ? 'place r' + r.rank : 'place';
+      const fmt = (score, rank) => `${score ?? '-'} <span class="rank">(${rank ?? '-'})</span>`;
+      html += `<tr>
+        <td class="${placeClass}">${r.rank}</td>
+        <td class="name">${escHtml(p?.name)}</td>
+        <td class="disc">${fmt(r.reactionScore, r.reactionRank)}</td>
+        <td class="disc">${fmt(r.strengthScore, r.strengthRank)}</td>
+        <td class="disc">${fmt(r.speedKickingScore, r.speedKickingRank)}</td>
+        <td class="disc">${fmt(r.formScore, r.formRank)}</td>
+        <td class="disc">${fmt(r.kyorugiInfo, r.kyorugiRank)}</td>
+        <td class="total">${r.totalPoints} ${t('rankings.pts')}</td>
+      </tr>`;
+    });
+    html += `</table></div>`;
+  }
+
+  html += `<div class="footer">${escHtml(compName)} \u2022 ${t('rankings.overallRanking')}</div>
+    </div></body></html>`;
+
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
