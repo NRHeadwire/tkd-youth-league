@@ -306,7 +306,7 @@ const I18N = {
       manualEdit: 'Manual edits active', movedTo: 'Moved to', resetAutoConfirm: 'Reset groups to automatic distribution? Manual changes will be lost.',
       tooMany: 'Too many (max 4)', tooFew: 'Too few (min 3)',
       printRoster: 'Print Roster', printAllSheets: 'Print All Score Sheets', refereeSheet: 'Referee Score Sheet',
-      addGroup: 'Add Empty Group'
+      addGroup: 'Add Empty Group', printShortSheets: 'Print Short Sheets (SK + Form + Kyorugi)'
     },
     scoring: {
       selectGroup: 'Select Group', selectDiscipline: 'Select Discipline',
@@ -381,7 +381,7 @@ const I18N = {
       manualEdit: 'Manuell bearbeitet', movedTo: 'Verschoben nach', resetAutoConfirm: 'Gruppen auf automatische Verteilung zur\u00fccksetzen? Manuelle \u00c4nderungen gehen verloren.',
       tooMany: 'Zu viele (max 4)', tooFew: 'Zu wenige (min 3)',
       printRoster: 'Gruppen-Aushang drucken', printAllSheets: 'Alle Bewertungsbl\u00e4tter drucken', refereeSheet: 'Bewertungsblatt',
-      addGroup: 'Leere Gruppe hinzuf\u00fcgen'
+      addGroup: 'Leere Gruppe hinzuf\u00fcgen', printShortSheets: 'Kurzbl\u00e4tter drucken (Schnelltritte + Form + Kyorugi)'
     },
     scoring: {
       selectGroup: 'Gruppe w\u00e4hlen', selectDiscipline: 'Disziplin w\u00e4hlen',
@@ -1445,6 +1445,7 @@ function renderGroups() {
       <button class="btn btn-outline" onclick="addEmptyGroup()">+ ${t('groups.addGroup')}</button>
       <button class="btn btn-outline" onclick="printGroupRosters()">&#128424; ${t('groups.printRoster')}</button>
       <button class="btn btn-outline" onclick="printAllScoreSheets()">&#128424; ${t('groups.printAllSheets')}</button>
+      <button class="btn btn-outline" onclick="printShortScoreSheets()">&#128424; ${t('groups.printShortSheets')}</button>
       ${state.manuallyEdited ? `<button class="btn btn-outline" onclick="resetToAutoDistribution()">${t('groups.resetAuto')}</button>
         <span class="badge badge-active" style="background:#fff3e0;color:#e65100">${t('groups.manualEdit')}</span>` : ''}
     </div>
@@ -2480,98 +2481,177 @@ function printGroupRosters() {
   setTimeout(() => win.print(), 250);
 }
 
-// Empty score sheets for all groups & disciplines, for referees to fill in
+// Common CSS for compact print sheets
+function _printSheetCss() {
+  return `
+    @page { size: A4 portrait; margin: 10mm; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: #212121; font-size: 10pt; }
+    .sheet { page-break-after: always; padding: 8px 12px; }
+    .sheet:last-child { page-break-after: auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 4px; border-bottom: 2px solid #1a237e; margin-bottom: 8px; }
+    .header h1 { font-size: 1rem; margin: 0; color: #1a237e; }
+    .header .meta { text-align: right; font-size: 0.75rem; color: #666; }
+    .group-line { font-size: 0.95rem; color: #1a237e; margin-bottom: 8px; font-weight: 600; }
+    .group-line .meta { color: #666; font-weight: 400; font-size: 0.8rem; }
+    .disc-block { margin-bottom: 8px; }
+    .disc-title { font-size: 0.95rem; font-weight: 700; color: #1a237e; padding: 4px 0; margin-top: 4px; border-bottom: 1.5px solid #1a237e; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+    th, td { border: 1px solid #888; padding: 5px 6px; text-align: left; font-size: 9pt; }
+    th { background: #1a237e; color: #fff; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; font-size: 8pt; }
+    td { height: 22px; }
+    td.name-col { font-weight: 600; background: #f5f5f5; width: 26%; }
+    .num-col { width: 28px; text-align: center; }
+    .match-table { margin-bottom: 4px; }
+    .match-table th { background: #e8eaf6; color: #1a237e; font-weight: 700; }
+    .round-title { font-weight: 700; color: #1a237e; margin: 6px 0 3px; font-size: 0.85rem; }
+    .signature { margin-top: 10px; display: flex; justify-content: space-between; gap: 20px; }
+    .signature .line { flex: 1; border-top: 1px solid #888; padding-top: 3px; font-size: 0.7rem; color: #666; text-align: center; }
+    .footer { margin-top: 6px; text-align: center; color: #999; font-size: 0.65rem; }
+    .sit-out { font-style: italic; color: #666; font-size: 0.75rem; margin: 2px 0; }
+  `;
+}
+
+function _disciplineTable(disc, members) {
+  let html = `<table><tr>
+    <th class="num-col">#</th>
+    <th>${t('scoring.participant')}</th>`;
+  if (disc === 'reaction' || disc === 'strength') {
+    html += `<th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th>`;
+  } else if (disc === 'speedKicking') {
+    html += `<th>${t('scoring.count')} (${t('scoring.kicks')})</th>`;
+  } else if (disc === 'form') {
+    html += `<th>${t('scoring.formType')}</th><th>${t('scoring.rating')}</th><th>${t('scoring.points')}</th>`;
+  }
+  html += `<th>${t('scoring.rank')}</th></tr>`;
+  members.forEach((m, i) => {
+    html += `<tr><td class="num-col">${i + 1}</td><td class="name-col">${escHtml(m.name)}</td>`;
+    if (disc === 'reaction' || disc === 'strength') html += '<td></td><td></td><td></td><td></td>';
+    else if (disc === 'speedKicking') html += '<td></td>';
+    else if (disc === 'form') html += '<td></td><td></td><td></td>';
+    html += '<td></td></tr>';
+  });
+  html += `</table>`;
+  return html;
+}
+
+function _kyorugiBlock(members) {
+  const allYoung = members.every(m => calcAge(m.dob) <= 7);
+  const rounds = generateRounds(members);
+  let html = '';
+  rounds.forEach((round, rIdx) => {
+    html += `<div class="round-title">${t('scoring.round')} ${rIdx + 1}</div>`;
+    round.matches.forEach(match => {
+      html += `<table class="match-table">
+        <tr><th style="width:24%"></th><th style="text-align:center">${escHtml(match.a.name)}</th><th style="text-align:center">${escHtml(match.b.name)}</th></tr>`;
+      if (!allYoung) {
+        html += `<tr><td>${t('scoring.winner')}</td><td colspan="2" style="text-align:center">&nbsp;</td></tr>`;
+      }
+      html += `<tr><td>${t('scoring.points')}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+      </table>`;
+    });
+    if (round.sitOut) {
+      html += `<div class="sit-out">${escHtml(round.sitOut.name)} ${t('scoring.sitsOut')}</div>`;
+    }
+  });
+  return html;
+}
+
+function _sheetHeader(compName, dateStr, group, members) {
+  return `<div class="header">
+    <h1>${escHtml(compName)}</h1>
+    <div class="meta">${[state.competition.location, dateStr].filter(Boolean).join(' \u2022 ')}</div>
+  </div>
+  <div class="group-line">${escHtml(group.name)} <span class="meta">\u2022 ${members.length} ${t('groups.members')}</span></div>`;
+}
+
+function _sheetFooter(compName, group, label) {
+  return `<div class="signature">
+    <div class="line">${lang === 'de' ? 'Schiedsrichter / Datum' : 'Referee / Date'}</div>
+    <div class="line">${lang === 'de' ? 'Unterschrift' : 'Signature'}</div>
+  </div>
+  <div class="footer">${escHtml(compName)} \u2022 ${escHtml(group.name)} \u2022 ${label}</div>`;
+}
+
+// Empty score sheets for all groups, 2 sheets per group:
+//   Sheet 1: Reaction + Strength + Speed Kicking + Form
+//   Sheet 2: Kyorugi
 function printAllScoreSheets() {
   if (state.groups.length === 0) return;
   const compName = state.competition.name || 'TKD Youth League';
   const dateStr = state.competition.date ? new Date(state.competition.date).toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-US') : '';
 
-  const css = `
-    @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: #212121; }
-    .sheet { page-break-after: always; padding: 16px 20px; }
-    .sheet:last-child { page-break-after: auto; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 8px; border-bottom: 2px solid #1a237e; margin-bottom: 14px; }
-    .header h1 { font-size: 1.2rem; margin: 0; color: #1a237e; }
-    .header .meta { text-align: right; font-size: 0.85rem; color: #666; }
-    .title { font-size: 1.6rem; font-weight: 700; color: #1a237e; margin: 18px 0 6px; }
-    .group-line { font-size: 1.05rem; color: #444; margin-bottom: 14px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    th, td { border: 1.5px solid #888; padding: 10px 12px; text-align: left; }
-    th { background: #1a237e; color: #fff; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    td { height: 32px; }
-    td.name-col { font-weight: 600; background: #f5f5f5; }
-    .match-table th { background: #f0f0f0; color: #1a237e; }
-    .match-row td { background: #fafafa; }
-    .round-title { font-weight: 700; color: #1a237e; margin: 10px 0 6px; font-size: 1rem; }
-    .signature { margin-top: 24px; display: flex; justify-content: space-between; gap: 30px; }
-    .signature .line { flex: 1; border-top: 1px solid #888; padding-top: 4px; font-size: 0.8rem; color: #666; text-align: center; }
-    .footer { margin-top: 14px; text-align: center; color: #999; font-size: 0.75rem; }
-  `;
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(compName)} - ${t('groups.refereeSheet')}</title><style>${_printSheetCss()}</style></head><body>`;
 
-  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(compName)} - ${t('groups.refereeSheet')}</title><style>${css}</style></head><body>`;
-
-  const disciplines = ['reaction', 'strength', 'speedKicking', 'form', 'kyorugi'];
   for (const g of state.groups) {
     const members = g.participantIds.map(id => state.participants.find(p => p.id === id)).filter(Boolean);
     if (members.length === 0) continue;
 
-    for (const disc of disciplines) {
-      html += `<div class="sheet">
-        <div class="header">
-          <h1>${escHtml(compName)}</h1>
-          <div class="meta">${[state.competition.location, dateStr].filter(Boolean).join('<br>')}</div>
-        </div>
-        <div class="title">${t('scoring.' + disc)}</div>
-        <div class="group-line"><strong>${escHtml(g.name)}</strong> \u2022 ${members.length} ${t('groups.members')}</div>`;
-
-      if (disc === 'kyorugi') {
-        const allYoung = members.every(m => calcAge(m.dob) <= 7);
-        const rounds = generateRounds(members);
-        rounds.forEach((round, rIdx) => {
-          html += `<div class="round-title">${t('scoring.round')} ${rIdx + 1}</div>`;
-          round.matches.forEach(match => {
-            html += `<table class="match-table">
-              <tr><th></th><th style="text-align:center">${escHtml(match.a.name)}</th><th style="text-align:center">${escHtml(match.b.name)}</th></tr>`;
-            if (!allYoung) {
-              html += `<tr class="match-row"><td>${t('scoring.winner')}</td><td colspan="2" style="text-align:center">&nbsp;</td></tr>`;
-            }
-            html += `<tr class="match-row"><td>${t('scoring.points')}</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-            </table>`;
-          });
-          if (round.sitOut) {
-            html += `<div style="font-style:italic;color:#666;font-size:0.85rem;margin-bottom:8px">${escHtml(round.sitOut.name)} ${t('scoring.sitsOut')}</div>`;
-          }
-        });
-      } else {
-        html += `<table><tr>
-          <th style="width:36px">#</th>
-          <th>${t('scoring.participant')}</th>`;
-        if (disc === 'reaction' || disc === 'strength') {
-          html += `<th>${t('scoring.r1')}</th><th>${t('scoring.r2')}</th><th>${t('scoring.r3')}</th><th>${t('scoring.total')}</th>`;
-        } else if (disc === 'speedKicking') {
-          html += `<th>${t('scoring.count')} (${t('scoring.kicks')})</th>`;
-        } else if (disc === 'form') {
-          html += `<th>${t('scoring.formType')}</th><th>${t('scoring.rating')}</th><th>${t('scoring.points')}</th>`;
-        }
-        html += `<th>${t('scoring.rank')}</th></tr>`;
-        members.forEach((m, i) => {
-          html += `<tr><td>${i + 1}</td><td class="name-col">${escHtml(m.name)}</td>`;
-          if (disc === 'reaction' || disc === 'strength') html += '<td></td><td></td><td></td><td></td>';
-          else if (disc === 'speedKicking') html += '<td></td>';
-          else if (disc === 'form') html += '<td></td><td></td><td></td>';
-          html += '<td></td></tr>';
-        });
-        html += `</table>`;
-      }
-
-      html += `<div class="signature">
-        <div class="line">${lang === 'de' ? 'Schiedsrichter / Datum' : 'Referee / Date'}</div>
-        <div class="line">${lang === 'de' ? 'Unterschrift' : 'Signature'}</div>
+    // Sheet 1: 4 disciplines combined
+    html += `<div class="sheet">
+      ${_sheetHeader(compName, dateStr, g, members)}
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.reaction')} <span style="font-weight:400;font-size:0.75rem;color:#666">(${t('scoring.lowerBetter')})</span></div>
+        ${_disciplineTable('reaction', members)}
       </div>
-      <div class="footer">${escHtml(compName)} \u2022 ${escHtml(g.name)} \u2022 ${t('scoring.' + disc)}</div>
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.strength')}</div>
+        ${_disciplineTable('strength', members)}
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.speedKicking')}</div>
+        ${_disciplineTable('speedKicking', members)}
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.form')}</div>
+        ${_disciplineTable('form', members)}
+      </div>
+      ${_sheetFooter(compName, g, t('scoring.reaction') + ' + ' + t('scoring.strength') + ' + ' + t('scoring.speedKicking') + ' + ' + t('scoring.form'))}
     </div>`;
-    }
+
+    // Sheet 2: Kyorugi
+    html += `<div class="sheet">
+      ${_sheetHeader(compName, dateStr, g, members)}
+      <div class="disc-title">${t('scoring.kyorugi')}</div>
+      ${_kyorugiBlock(members)}
+      ${_sheetFooter(compName, g, t('scoring.kyorugi'))}
+    </div>`;
+  }
+
+  html += `</body></html>`;
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 250);
+}
+
+// Short sheets: Speed Kicking + Form + Kyorugi, one sheet per group
+function printShortScoreSheets() {
+  if (state.groups.length === 0) return;
+  const compName = state.competition.name || 'TKD Youth League';
+  const dateStr = state.competition.date ? new Date(state.competition.date).toLocaleDateString(lang === 'de' ? 'de-CH' : 'en-US') : '';
+
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(compName)} - ${t('groups.refereeSheet')}</title><style>${_printSheetCss()}</style></head><body>`;
+
+  for (const g of state.groups) {
+    const members = g.participantIds.map(id => state.participants.find(p => p.id === id)).filter(Boolean);
+    if (members.length === 0) continue;
+
+    html += `<div class="sheet">
+      ${_sheetHeader(compName, dateStr, g, members)}
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.speedKicking')}</div>
+        ${_disciplineTable('speedKicking', members)}
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.form')}</div>
+        ${_disciplineTable('form', members)}
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">${t('scoring.kyorugi')}</div>
+        ${_kyorugiBlock(members)}
+      </div>
+      ${_sheetFooter(compName, g, t('scoring.speedKicking') + ' + ' + t('scoring.form') + ' + ' + t('scoring.kyorugi'))}
+    </div>`;
   }
 
   html += `</body></html>`;
